@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IT Asset Management System</title>
+    <link rel="icon" href="./Logo/logo.png" />
+    <link rel="stylesheet" href="./style.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  </head>
+  <body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+      <div class="login-container">
+        <div class="login-wrapper">
+          <!-- Left Side - Branding -->
+          <div class="login-brand">
+            <div class="brand-content">
+              <div class="brand-logo">
+                <i class="fas fa-laptop-code"></i>
+              </div>
+              <h1>IT Asset Management</h1>
+              <p>Streamline your IT asset lifecycle management</p>
+              <div class="brand-features">
+                <div class="feature-item">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Track assets in real-time</span>
+                </div>
+                <div class="feature-item">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Manage employee allocations</span>
+                </div>
+                <div class="feature-item">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Maintenance scheduling</span>
+                </div>
+                <div class="feature-item">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Comprehensive reports</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Side - Login Form -->
+          <div class="login-form-container">
+            <div class="login-box">
+              <div class="login-header">
+                <h2>Welcome Back</h2>
+                <p id="authSubtitle">Sign in to access the system</p>
+              </div>
+
+              <!-- Login Form -->
+              <form id="loginForm" class="auth-form active">
+                <div class="form-group">
+                  <label for="loginEmail">
+                    <i class="fas fa-envelope"></i> Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="loginEmail"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="loginPassword">
+                    <i class="fas fa-lock"></i> Password
+                  </label>
+                  <input
+                    type="password"
+                    id="loginPassword"
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
+                <div
+                  id="loginError"
+                  class="error-message"
+                  style="display: none"
+                ></div>
+                <!-- Centered Button -->
+                <div class="btn-wrapper">
+                  <button type="submit" class="btn-primary btn-full">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                  </button>
+                </div>
+                <div class="auth-switch">
+                  <p>
+                    Don't have an account?
+                    <a href="#" onclick="showSignup()">Create Account</a>
+                  </p>
+                </div>
+              </form>
+
+              <!-- Signup Form -->
+              <form id="signupForm" class="auth-form">
+                <div class="form-group">
+                  <label for="signupName">
+                    <i class="fas fa-user"></i> Full Name
+                  </label>
+                  <input
+                    type="text"
+                    id="signupName"
+                    placeholder="Enter your full name"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupEmployeeId">
+                    <i class="fas fa-id-badge"></i> Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    id="signupEmployeeId"
+                    placeholder="Enter employee ID"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupEmail">
+                    <i class="fas fa-envelope"></i> Email Address
+                  </label>
+                  <input
+                    type="email"
+                    id="signupEmail"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupDepartment">
+                    <i class="fas fa-building"></i> Department
+                  </label>
+                  <input
+                    type="text"
+                    id="signupDepartment"
+                    placeholder="Enter department"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupDesignation">
+                    <i class="fas fa-briefcase"></i> Designation
+                  </label>
+                  <input
+                    type="text"
+                    id="signupDesignation"
+                    placeholder="Enter designation"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupPassword">
+                    <i class="fas fa-lock"></i> Password
+                  </label>
+                  <input
+                    type="password"
+                    id="signupPassword"
+                    placeholder="Create password (min 6 characters)"
+                    required
+                    minlength="6"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="signupConfirmPassword">
+                    <i class="fas fa-lock"></i> Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    id="signupConfirmPassword"
+                    placeholder="Confirm password"
+                    required
+                  />
+                </div>
+                <div
+                  id="signupError"
+                  class="error-message"
+                  style="display: none"
+                ></div>
+                <div
+                  id="signupSuccess"
+                  class="success-message"
+                  style="display: none"
+                ></div>
+                <!-- Centered Button -->
+                <div class="btn-wrapper">
+                  <button type="submit" class="btn-primary btn-full">
+                    <i class="fas fa-user-plus"></i> Create Account
+                  </button>
+                </div>
+                <div class="auth-switch">
+                  <p>
+                    Already have an account?
+                    <a href="#" onclick="showLogin()">Sign In</a>
+                  </p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="appPage" class="page">
+      <!-- Sidebar Overlay -->
+      <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+      <!-- Sidebar -->
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+          <i class="fas fa-laptop-code"></i>
+          <span>IT Asset</span>
+        </div>
+        <div class="sidebar-user">
+          <div class="user-avatar-wrapper" onclick="triggerProfilePicUpload()">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div class="avatar-upload-overlay">
+              <i class="fas fa-camera"></i>
+            </div>
+            <input
+              type="file"
+              id="profilePicInput"
+              accept="image/*"
+              style="display: none"
+            />
+          </div>
+          <div class="user-info">
+            <div class="user-name" id="userName">Admin</div>
+            <div class="user-role" id="userRole">Administrator</div>
+          </div>
+        </div>
+        <ul class="sidebar-nav">
+          <li class="nav-item active" data-page="dashboard">
+            <i class="fas fa-chart-pie"></i>
+            <span>Dashboard</span>
+          </li>
+          <li class="nav-item" data-page="assets">
+            <i class="fas fa-server"></i>
+            <span>Assets</span>
+          </li>
+          <li class="nav-item" data-page="employees">
+            <i class="fas fa-users"></i>
+            <span>Employees</span>
+          </li>
+          <li class="nav-item" data-page="allocations">
+            <i class="fas fa-exchange-alt"></i>
+            <span>Allocations</span>
+          </li>
+          <li class="nav-item" data-page="maintenance">
+            <i class="fas fa-tools"></i>
+            <span>Maintenance</span>
+          </li>
+          <li class="nav-item" data-page="reports">
+            <i class="fas fa-file-alt"></i>
+            <span>Reports</span>
+          </li>
+          <!-- Profile Section -->
+          <li class="nav-divider"></li>
+          <li class="nav-item profile-item" data-page="profile">
+            <i class="fas fa-user-circle"></i>
+            <span>My Profile</span>
+          </li>
+        </ul>
+        <div class="sidebar-footer">
+          <button id="logoutBtn" class="btn-logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </nav>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <!-- Header -->
+        <header class="top-header">
+          <div class="header-left">
+            <button
+              class="menu-toggle"
+              id="menuToggle"
+              onclick="toggleSidebar()"
+            >
+              <i class="fas fa-bars"></i>
+            </button>
+            <h2 id="pageTitle">Dashboard</h2>
+          </div>
+          <div class="header-right">
+            <div class="notification-dropdown-wrapper">
+              <div
+                class="notification-badge"
+                id="notificationBell"
+                onclick="toggleNotificationDropdown()"
+              >
+                <i class="fas fa-bell"></i>
+                <span class="badge" id="notificationCount">0</span>
+              </div>
+              <div class="notification-dropdown" id="notificationDropdown">
+                <div class="notification-header">
+                  <span>Notifications</span>
+                  <button
+                    class="mark-all-read"
+                    onclick="markAllNotificationsRead()"
+                  >
+                    Mark all as read
+                  </button>
+                </div>
+                <div class="notification-list" id="notificationList">
+                  <p class="empty-notifications">No notifications</p>
+                </div>
+              </div>
+            </div>
+            <!-- Theme Toggle - Sun/Moon Icon -->
+            <button
+              id="themeToggleBtn"
+              class="theme-toggle-btn"
+              title="Switch to Dark Mode"
+            >
+              <i class="fas fa-moon"></i>
+            </button>
+            <div class="header-date" id="currentDate"></div>
+          </div>
+        </header>
+
+        <!-- Page Content -->
+        <div class="page-content">
+          <!-- Dashboard -->
+          <div id="dashboardPage" class="content-page active">
+            <!-- KPI Tiles -->
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-icon blue">
+                  <i class="fas fa-server"></i>
+                </div>
+                <div class="kpi-info">
+                  <h3 id="kpiTotalAssets">0</h3>
+                  <p>Total Assets</p>
+                </div>
+                <div class="kpi-trend up">
+                  <i class="fas fa-arrow-up"></i> 12%
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon green">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="kpi-info">
+                  <h3 id="kpiAvailableAssets">0</h3>
+                  <p>Available</p>
+                </div>
+                <div class="kpi-trend up">
+                  <i class="fas fa-arrow-up"></i> 8%
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon orange">
+                  <i class="fas fa-user-check"></i>
+                </div>
+                <div class="kpi-info">
+                  <h3 id="kpiAllocatedAssets">0</h3>
+                  <p>Allocated</p>
+                </div>
+                <div class="kpi-trend down">
+                  <i class="fas fa-arrow-down"></i> 3%
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon red">
+                  <i class="fas fa-wrench"></i>
+                </div>
+                <div class="kpi-info">
+                  <h3 id="kpiMaintenanceAssets">0</h3>
+                  <p>Under Maintenance</p>
+                </div>
+                <div class="kpi-trend up">
+                  <i class="fas fa-arrow-up"></i> 5%
+                </div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-icon purple">
+                  <i class="fas fa-users"></i>
+                </div>
+                <div class="kpi-info">
+                  <h3 id="kpiTotalEmployees">0</h3>
+                  <p>Total Employees</p>
+                </div>
+                <div class="kpi-trend neutral">
+                  <i class="fas fa-minus"></i> 0%
+                </div>
+              </div>
+            </div>
+
+            <!-- Radial Cards -->
+            <div class="radial-grid">
+              <div class="radial-card">
+                <div class="radial-progress">
+                  <svg viewBox="0 0 120 120">
+                    <circle class="radial-bg" cx="60" cy="60" r="50" />
+                    <circle
+                      class="radial-progress-circle"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style="
+                        stroke-dasharray: 314.159;
+                        stroke-dashoffset: 314.159;
+                      "
+                      id="radialAvailable"
+                    />
+                  </svg>
+                  <div class="radial-center">
+                    <span class="radial-value" id="radialAvailableValue"
+                      >0%</span
+                    >
+                    <span class="radial-label">Available</span>
+                  </div>
+                </div>
+                <div class="radial-info">
+                  <span class="radial-number" id="radialAvailableCount">0</span>
+                  <span class="radial-text">Assets Available</span>
+                </div>
+              </div>
+
+              <div class="radial-card">
+                <div class="radial-progress">
+                  <svg viewBox="0 0 120 120">
+                    <circle class="radial-bg" cx="60" cy="60" r="50" />
+                    <circle
+                      class="radial-progress-circle orange"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style="
+                        stroke-dasharray: 314.159;
+                        stroke-dashoffset: 314.159;
+                      "
+                      id="radialAllocated"
+                    />
+                  </svg>
+                  <div class="radial-center">
+                    <span class="radial-value" id="radialAllocatedValue"
+                      >0%</span
+                    >
+                    <span class="radial-label">Allocated</span>
+                  </div>
+                </div>
+                <div class="radial-info">
+                  <span class="radial-number" id="radialAllocatedCount">0</span>
+                  <span class="radial-text">Assets Allocated</span>
+                </div>
+              </div>
+
+              <div class="radial-card">
+                <div class="radial-progress">
+                  <svg viewBox="0 0 120 120">
+                    <circle class="radial-bg" cx="60" cy="60" r="50" />
+                    <circle
+                      class="radial-progress-circle red"
+                      cx="60"
+                      cy="60"
+                      r="50"
+                      style="
+                        stroke-dasharray: 314.159;
+                        stroke-dashoffset: 314.159;
+                      "
+                      id="radialMaintenance"
+                    />
+                  </svg>
+                  <div class="radial-center">
+                    <span class="radial-value" id="radialMaintenanceValue"
+                      >0%</span
+                    >
+                    <span class="radial-label">Maintenance</span>
+                  </div>
+                </div>
+                <div class="radial-info">
+                  <span class="radial-number" id="radialMaintenanceCount"
+                    >0</span
+                  >
+                  <span class="radial-text">In Maintenance</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="dashboard-charts">
+              <div class="chart-card">
+                <h4>Recent Allocations</h4>
+                <div id="recentAllocations">
+                  <p class="empty-state">No recent allocations</p>
+                </div>
+              </div>
+              <div class="chart-card">
+                <h4>Asset Status Distribution</h4>
+                <div id="pieChartContainer">
+                  <canvas id="assetPieChart"></canvas>
+                  <div class="pie-legend"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Assets Page -->
+          <div id="assetsPage" class="content-page">
+            <div class="page-header">
+              <div class="header-actions">
+                <div class="search-box">
+                  <i class="fas fa-search"></i>
+                  <input
+                    type="text"
+                    id="assetSearch"
+                    placeholder="Search assets..."
+                  />
+                </div>
+                <div class="filter-group">
+                  <select id="assetCategoryFilter">
+                    <option value="">All Categories</option>
+                    <option value="Laptop">Laptop</option>
+                    <option value="Desktop">Desktop</option>
+                    <option value="Monitor">Monitor</option>
+                    <option value="Keyboard">Keyboard</option>
+                    <option value="Mouse">Mouse</option>
+                    <option value="Printer">Printer</option>
+                    <option value="Network Device">Network Device</option>
+                    <option value="Software License">Software License</option>
+                  </select>
+                  <select id="assetStatusFilter">
+                    <option value="">All Status</option>
+                    <option value="Available">Available</option>
+                    <option value="Allocated">Allocated</option>
+                    <option value="Under Maintenance">Under Maintenance</option>
+                    <option value="Retired">Retired</option>
+                  </select>
+                </div>
+                <button class="btn-primary" id="addAssetBtn">
+                  <i class="fas fa-plus"></i> Add Asset
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="assetsTable">
+                <thead>
+                  <tr>
+                    <th>Asset Code</th>
+                    <th>Asset Name</th>
+                    <th>Category</th>
+                    <th>Serial Number</th>
+                    <th>Status</th>
+                    <th>Condition</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="assetsTableBody">
+                  <tr>
+                    <td colspan="7" class="text-center">Loading assets...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Employees Page -->
+          <div id="employeesPage" class="content-page">
+            <div class="page-header">
+              <div class="header-actions">
+                <div class="search-box">
+                  <i class="fas fa-search"></i>
+                  <input
+                    type="text"
+                    id="employeeSearch"
+                    placeholder="Search employees..."
+                  />
+                </div>
+                <button class="btn-primary" id="addEmployeeBtn">
+                  <i class="fas fa-plus"></i> Add Employee
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="employeesTable">
+                <thead>
+                  <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="employeesTableBody">
+                  <tr>
+                    <td colspan="6" class="text-center">
+                      Loading employees...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Allocations Page -->
+          <div id="allocationsPage" class="content-page">
+            <div class="page-header">
+              <div class="header-actions">
+                <button class="btn-primary" id="addAllocationBtn">
+                  <i class="fas fa-plus"></i> New Allocation
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="allocationsTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Employee</th>
+                    <th>Allocation Date</th>
+                    <th>Return Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="allocationsTableBody">
+                  <tr>
+                    <td colspan="6" class="text-center">
+                      Loading allocations...
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Maintenance Page -->
+          <div id="maintenancePage" class="content-page">
+            <div class="page-header">
+              <div class="header-actions">
+                <button class="btn-primary" id="addMaintenanceBtn">
+                  <i class="fas fa-plus"></i> New Request
+                </button>
+              </div>
+            </div>
+            <div class="table-container">
+              <table id="maintenanceTable">
+                <thead>
+                  <tr>
+                    <th>Asset</th>
+                    <th>Employee</th>
+                    <th>Issue</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="maintenanceTableBody">
+                  <tr>
+                    <td colspan="6" class="text-center">Loading requests...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Reports Page -->
+          <div id="reportsPage" class="content-page">
+            <!-- Reports content will be rendered by JavaScript -->
+          </div>
+
+          <!-- Profile Page -->
+          <div id="profilePage" class="content-page">
+            <!-- Profile content will be rendered by JavaScript -->
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modalTitle">Modal Title</h3>
+          <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalBody">
+          <!-- Dynamic content -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
