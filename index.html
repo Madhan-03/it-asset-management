@@ -272,7 +272,7 @@
           </li>
         </ul>
         <div class="sidebar-footer">
-          <button id="logoutBtn" class="btn-logout">
+          <button id="logoutBtn" class="btn-logout" onclick="handleLogout()">
             <i class="fas fa-sign-out-alt"></i> Logout
           </button>
         </div>
@@ -696,6 +696,11 @@
 
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
+
+    <!-- ===== FLOATING LOGOUT BUTTON (Mobile) ===== -->
+    <button id="mobileLogoutBtn" class="mobile-logout-btn" onclick="handleLogout()">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </button>
 
     <script src="./app.js"></script>
   </body>
