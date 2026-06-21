@@ -359,8 +359,8 @@ body {
   padding: 10px 20px;
   background: var(--primary-gradient);
   color: white;
-  border: 30px;
-  border-radius: 20px;
+  border: none;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -601,6 +601,8 @@ body {
   padding: 12px 8px;
   flex: 1;
   overflow-y: auto;
+  /* Ensure nav items don't push footer out of view */
+  min-height: 0;
 }
 
 .nav-item {
@@ -666,11 +668,16 @@ body {
   font-size: 18px;
 }
 
-/* Sidebar Footer */
+/* Sidebar Footer - FIXED: Always visible at bottom */
 .sidebar-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(255,255,255,0.05);
   flex-shrink: 0;
+  margin-top: auto;
+  background: var(--bg-sidebar);
+  /* Ensure footer stays at bottom */
+  position: sticky;
+  bottom: 0;
 }
 
 .btn-logout {
@@ -1982,6 +1989,7 @@ tbody tr:hover {
   font-weight: 500;
   letter-spacing: 0.3px;
 }
+
 /* ===== REPORTS ===== */
 .reports-container {
   padding: 20px 0;
