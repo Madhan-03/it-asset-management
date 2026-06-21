@@ -1337,6 +1337,7 @@ async function loadAllocations() {
   }
 }
 
+// ===== FIXED: Render Allocations Table with better handling for Unknown =====
 function renderAllocationsTable(data) {
   const tbody = document.getElementById("allocationsTableBody");
   if (!data || data.length === 0) {
@@ -1346,13 +1347,34 @@ function renderAllocationsTable(data) {
 
   const isAdmin = currentUser && currentUser.role === "admin";
 
-  tbody.innerHTML = data.map((alloc) => `
+  tbody.innerHTML = data.map((alloc) => {
+    // Get employee name with proper fallback
+    let employeeName = "Unknown";
+    if (alloc.employee) {
+      if (typeof alloc.employee === 'object') {
+        employeeName = alloc.employee.name || alloc.employee.employeeId || "Unknown Employee";
+      } else if (typeof alloc.employee === 'string') {
+        employeeName = alloc.employee;
+      }
+    }
+    
+    // Get asset name with proper fallback
+    let assetName = "Unknown Asset";
+    if (alloc.asset) {
+      if (typeof alloc.asset === 'object') {
+        assetName = alloc.asset.assetName || alloc.asset.assetCode || "Unknown Asset";
+      } else if (typeof alloc.asset === 'string') {
+        assetName = alloc.asset;
+      }
+    }
+
+    return `
     <tr>
-      <td>${alloc.asset?.assetName || "Unknown"}</td>
-      <td>${alloc.employee?.name || "Unknown"}</td>
+      <td>${assetName}</td>
+      <td>${employeeName}</td>
       <td>${formatDate(alloc.allocationDate)}</td>
       <td>${alloc.returnDate ? formatDate(alloc.returnDate) : "-"}</td>
-      <td><span class="status-badge ${alloc.status === "Active" ? "allocated" : "available"}">${alloc.status}</span></td>
+      <td><span class="status-badge ${alloc.status === "Active" ? "allocated" : "available"}">${alloc.status || "Unknown"}</span></td>
       <td>
         <div class="action-buttons">
           ${isAdmin && alloc.status === "Active" ? `<button class="action-btn success" onclick="returnAsset('${alloc._id}')" title="Return"><i class="fas fa-undo"></i></button>` : ""}
@@ -1360,7 +1382,7 @@ function renderAllocationsTable(data) {
         </div>
       </td>
     </tr>
-  `).join("");
+  `}).join("");
 }
 
 function showAddAllocationModal() {
@@ -1546,16 +1568,22 @@ function viewAllocation(id) {
   const alloc = allocations.find((a) => a._id === id);
   if (!alloc) return;
 
+  // Safely get names
+  const employeeName = alloc.employee?.name || alloc.employee?.employeeId || "Unknown Employee";
+  const employeeId = alloc.employee?.employeeId || "";
+  const assetName = alloc.asset?.assetName || alloc.asset?.assetCode || "Unknown Asset";
+  const assetCode = alloc.asset?.assetCode || "";
+
   const html = `
     <div style="padding: 10px 0;">
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
         <div style="padding: 12px; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-color);">
           <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; display: block; margin-bottom: 4px;">Asset</span>
-          <strong style="font-size: 15px; color: var(--text-primary);">${alloc.asset?.assetName || "Unknown"} (${alloc.asset?.assetCode || ""})</strong>
+          <strong style="font-size: 15px; color: var(--text-primary);">${assetName} (${assetCode})</strong>
         </div>
         <div style="padding: 12px; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-color);">
           <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; display: block; margin-bottom: 4px;">Employee</span>
-          <strong style="font-size: 15px; color: var(--text-primary);">${alloc.employee?.name || "Unknown"} (${alloc.employee?.employeeId || ""})</strong>
+          <strong style="font-size: 15px; color: var(--text-primary);">${employeeName} (${employeeId})</strong>
         </div>
         <div style="padding: 12px; background: var(--bg-input); border-radius: 8px; border: 1px solid var(--border-color);">
           <span style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; display: block; margin-bottom: 4px;">Allocation Date</span>
@@ -1909,7 +1937,7 @@ function loadReports() {
             </button>
           </div>
           <div id="reportDataContainer">
-            <p class="text-muted">Loading report data...</p>
+            <p class="text-muted">Click "Generate PDF" to view report data</p>
           </div>
         </div>
       </div>
@@ -1941,7 +1969,7 @@ async function generateReport(type) {
             </button>
           </div>
           <div id="reportDataContainer">
-            <p class="text-muted">Loading report data...</p>
+            <p class="text-muted">Click "Generate PDF" to view report data</p>
           </div>
         `;
         reportsContainer.appendChild(previewDiv);
@@ -1990,7 +2018,6 @@ async function generateReport(type) {
         title = "Employee Asset Report";
         break;
       case "allocation":
-        // FIXED: Handle null employee/asset references in Allocation History
         data = await api.reports.getAllocationHistory();
         title = "Allocation History";
         break;
@@ -2045,13 +2072,26 @@ async function generateReport(type) {
         Object.values(item).some(v => v !== 'N/A' && v !== '' && v !== null && v !== undefined)
       );
 
-    } else if (data && !Array.isArray(data.data)) {
-      // If data.data is not an array, try to use data directly if it's an array
-      if (Array.isArray(data)) {
-        reportData = data;
-      } else {
-        reportData = [];
-      }
+    } else if (data && Array.isArray(data)) {
+      // If data itself is an array
+      reportData = data.map(item => {
+        const safeItem = {};
+        Object.keys(item).forEach(key => {
+          const value = item[key];
+          if (value === null || value === undefined) {
+            safeItem[key] = 'N/A';
+          } else if (typeof value === 'object' && value !== null) {
+            if (value.name) safeItem[key] = value.name;
+            else if (value.assetName) safeItem[key] = value.assetName;
+            else if (value.employeeId) safeItem[key] = value.employeeId;
+            else if (value.assetCode) safeItem[key] = value.assetCode;
+            else safeItem[key] = JSON.stringify(value);
+          } else {
+            safeItem[key] = value;
+          }
+        });
+        return safeItem;
+      });
     } else {
       reportData = [];
     }
