@@ -1462,6 +1462,7 @@ async function editAllocation(id) {
     const assetsData = await api.assets.getAll();
     const employeesData = await api.users.getAll();
     
+    // Include current asset even if not available
     const availableAssets = assetsData.filter((a) => a.status === "Available" || a._id === alloc.asset?._id);
     
     let assetOptions = "";
@@ -1472,7 +1473,7 @@ async function editAllocation(id) {
         </option>`
       ).join("");
     } else {
-      assetOptions = `<option value="">No available assets</option>`;
+      assetOptions = `<option value="${alloc.asset?._id || ''}" selected>${alloc.asset?.assetName || 'Current Asset'}</option>`;
     }
 
     let employeeOptions = "";
@@ -1483,7 +1484,14 @@ async function editAllocation(id) {
         </option>`
       ).join("");
     } else {
-      employeeOptions = `<option value="">No employees found</option>`;
+      employeeOptions = `<option value="${alloc.employee?._id || ''}" selected>${alloc.employee?.name || 'Current Employee'}</option>`;
+    }
+
+    // Format date properly
+    let allocationDate = "";
+    if (alloc.allocationDate) {
+      const date = new Date(alloc.allocationDate);
+      allocationDate = date.toISOString().split("T")[0];
     }
 
     const html = `
@@ -1504,7 +1512,7 @@ async function editAllocation(id) {
         </div>
         <div class="form-group">
           <label>Allocation Date</label>
-          <input type="date" id="editAllocDate" value="${alloc.allocationDate ? new Date(alloc.allocationDate).toISOString().split("T")[0] : ""}">
+          <input type="date" id="editAllocDate" value="${allocationDate}">
         </div>
         <div class="form-group">
           <label>Status</label>
@@ -1526,41 +1534,102 @@ async function editAllocation(id) {
     showModal("Edit Allocation", html);
   } catch (error) {
     console.error("Error loading edit data:", error);
-    showToast("Failed to load data for editing", "error");
+    // Show a simpler edit form without loading assets/employees
+    showSimpleEditAllocation(id);
   }
+}
+
+// ===== SIMPLE EDIT ALLOCATION (Fallback) =====
+function showSimpleEditAllocation(id) {
+  const alloc = allocations.find((a) => a._id === id);
+  if (!alloc) {
+    showToast("Allocation not found", "error");
+    return;
+  }
+
+  let allocationDate = "";
+  if (alloc.allocationDate) {
+    const date = new Date(alloc.allocationDate);
+    allocationDate = date.toISOString().split("T")[0];
+  }
+
+  const html = `
+    <form id="editAllocationForm" onsubmit="updateAllocation(event, '${id}')">
+      <div style="background: var(--bg-input); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <span style="color: var(--text-muted); font-size: 12px;">Asset</span>
+            <div style="font-weight: 600;">${alloc.asset?.assetName || 'Unknown'} (${alloc.asset?.assetCode || ''})</div>
+          </div>
+          <div>
+            <span style="color: var(--text-muted); font-size: 12px;">Employee</span>
+            <div style="font-weight: 600;">${alloc.employee?.name || 'Unknown'} (${alloc.employee?.employeeId || ''})</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Allocation Date</label>
+        <input type="date" id="editAllocDate" value="${allocationDate}">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="editAllocStatus">
+          <option value="Active" ${alloc.status === "Active" ? "selected" : ""}>Active</option>
+          <option value="Returned" ${alloc.status === "Returned" ? "selected" : ""}>Returned</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Remarks</label>
+        <textarea id="editAllocRemarks" rows="3" placeholder="Enter allocation remarks...">${alloc.remarks || ""}</textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Allocation</button>
+      </div>
+    </form>
+  `;
+  showModal("Edit Allocation", html);
 }
 
 // ===== UPDATE ALLOCATION FUNCTION =====
 async function updateAllocation(e, id) {
   e.preventDefault();
 
-  const assetId = document.getElementById("editAllocAsset").value;
-  const employeeId = document.getElementById("editAllocEmployee").value;
-  const allocationDate = document.getElementById("editAllocDate").value;
-  const status = document.getElementById("editAllocStatus").value;
-  const remarks = document.getElementById("editAllocRemarks").value;
+  const assetId = document.getElementById("editAllocAsset")?.value;
+  const employeeId = document.getElementById("editAllocEmployee")?.value;
+  const allocationDate = document.getElementById("editAllocDate")?.value;
+  const status = document.getElementById("editAllocStatus")?.value;
+  const remarks = document.getElementById("editAllocRemarks")?.value;
 
-  if (!assetId || assetId === "") {
-    showToast("Please select an asset", "error");
-    document.getElementById("editAllocAsset").focus();
-    return;
-  }
-  if (!employeeId || employeeId === "") {
-    showToast("Please select an employee", "error");
-    document.getElementById("editAllocEmployee").focus();
-    return;
-  }
-
-  const data = {
-    asset: assetId,
-    employee: employeeId,
+  // If using simple form, get current values from allocation
+  const alloc = allocations.find((a) => a._id === id);
+  
+  let data = {
     allocationDate: allocationDate || new Date().toISOString(),
-    status: status,
-    remarks: remarks,
+    status: status || alloc?.status || "Active",
+    remarks: remarks || alloc?.remarks || "",
   };
 
+  // Only include asset and employee if they exist in the form
+  if (assetId && assetId !== "") {
+    data.asset = assetId;
+  }
+  if (employeeId && employeeId !== "") {
+    data.employee = employeeId;
+  }
+
+  // If using simple form, keep existing asset and employee
+  if (!data.asset && alloc?.asset?._id) {
+    data.asset = alloc.asset._id;
+  }
+  if (!data.employee && alloc?.employee?._id) {
+    data.employee = alloc.employee._id;
+  }
+
   try {
-    await api.allocations.update(id, data);
+    console.log("Updating allocation with data:", data);
+    const result = await api.allocations.update(id, data);
+    console.log("Update result:", result);
     closeModal();
     showToast("Allocation updated successfully!", "success");
     loadAllocations();
@@ -1568,7 +1637,34 @@ async function updateAllocation(e, id) {
     loadDashboard();
   } catch (error) {
     console.error("Update allocation error:", error);
-    showToast(error.message || "Failed to update allocation", "error");
+    // Try using the raw fetch as fallback
+    try {
+      const response = await fetch(`${API_URL}/allocations/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Server response:", errorText);
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log("Update successful via direct fetch:", result);
+      closeModal();
+      showToast("Allocation updated successfully!", "success");
+      loadAllocations();
+      loadAssets();
+      loadDashboard();
+    } catch (fallbackError) {
+      console.error("Fallback update error:", fallbackError);
+      showToast(error.message || "Failed to update allocation", "error");
+    }
   }
 }
 
