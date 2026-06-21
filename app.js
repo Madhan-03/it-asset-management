@@ -1,6 +1,7 @@
 // API Configuration
 const API_URL = "http://localhost:5000/api";
-
+// API Configuration
+const API_URL = "https://it-asset-management.onrender.com/api";
 // State Management
 let currentUser = null;
 let token = null;
