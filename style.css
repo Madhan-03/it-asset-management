@@ -468,7 +468,7 @@ body {
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
 
-/* ===== SIDEBAR - UPDATED ===== */
+/* ===== SIDEBAR ===== */
 .sidebar {
   position: fixed;
   left: 0;
@@ -670,7 +670,7 @@ body {
   font-size: 18px;
 }
 
-/* ===== SIDEBAR FOOTER - UPDATED ===== */
+/* ===== SIDEBAR FOOTER ===== */
 .sidebar-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(255,255,255,0.05);
@@ -694,7 +694,7 @@ body {
   }
 }
 
-/* ===== LOGOUT BUTTON - UPDATED ===== */
+/* ===== LOGOUT BUTTON ===== */
 .btn-logout {
   width: 100%;
   padding: 12px;
@@ -1991,6 +1991,11 @@ tbody tr:hover {
   color: var(--success);
 }
 
+.action-btn.refresh:hover {
+  background: #fef3c7;
+  color: var(--warning);
+}
+
 /* Dark theme support for action buttons */
 [data-theme="dark"] .action-btn.edit:hover {
   background: #1e3a5f;
@@ -2010,6 +2015,11 @@ tbody tr:hover {
 [data-theme="dark"] .action-btn.success:hover {
   background: #064e3b;
   color: #34d399;
+}
+
+[data-theme="dark"] .action-btn.refresh:hover {
+  background: #451a03;
+  color: #fbbf24;
 }
 
 .view-only-badge {
@@ -2605,8 +2615,8 @@ tbody tr:hover {
     grid-template-columns: 1fr;
   }
 }
-/* ===== FLOATING LOGOUT BUTTON - MOBILE ONLY ===== */
 
+/* ===== FLOATING LOGOUT BUTTON - MOBILE ONLY ===== */
 /* Hide by default on all devices */
 .mobile-logout-btn {
   display: none !important;
@@ -2660,4 +2670,25 @@ tbody tr:hover {
   .mobile-logout-btn i {
     font-size: 16px;
   }
+}
+
+/* ===== API ERROR STYLES ===== */
+.api-error {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.api-error i {
+  margin-right: 8px;
+}
+
+[data-theme="dark"] .api-error {
+  background: #450a0a;
+  border-color: #7f1d1d;
+  color: #fca5a5;
 }
