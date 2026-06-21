@@ -199,6 +199,11 @@ const api = {
         body: data,
       });
     },
+    delete(id) {
+      return api.request(`/allocations/${id}`, {
+        method: "DELETE",
+      });
+    },
   },
 
   maintenance: {
@@ -1116,10 +1121,10 @@ function renderEmployeesTable(data) {
       <td>
         <div class="action-buttons">
           ${isAdmin ? `
-            <button class="action-btn edit" onclick="editEmployee('${emp._id}')" title="Edit">
+            <button class="action-btn edit" onclick="editEmployee('${emp._id}')" title="Edit Employee">
               <i class="fas fa-edit"></i>
             </button>
-            <button class="action-btn delete" onclick="deleteEmployee('${emp._id}')" title="Delete">
+            <button class="action-btn delete" onclick="deleteEmployee('${emp._id}')" title="Delete Employee">
               <i class="fas fa-trash"></i>
             </button>
             <button class="action-btn view" onclick="viewEmployeeDetails('${emp._id}')" title="View Details">
@@ -1129,6 +1134,7 @@ function renderEmployeesTable(data) {
             <button class="action-btn view" onclick="viewEmployeeDetails('${emp._id}')" title="View Details">
               <i class="fas fa-eye"></i>
             </button>
+            <span class="view-only-badge">View Only</span>
           `}
         </div>
       </td>
@@ -1203,7 +1209,10 @@ async function saveEmployee(e) {
 
 async function editEmployee(id) {
   const emp = employees.find((e) => e._id === id);
-  if (!emp) return;
+  if (!emp) {
+    showToast("Employee not found", "error");
+    return;
+  }
 
   const html = `
     <form id="employeeForm" onsubmit="updateEmployee(event, '${id}')">
@@ -1340,7 +1349,7 @@ async function loadAllocations() {
   }
 }
 
-// ===== FIXED: Render Allocations Table - NO "Unknown" =====
+// ===== UPDATED: Render Allocations Table with Full Actions =====
 function renderAllocationsTable(data) {
   const tbody = document.getElementById("allocationsTableBody");
   if (!data || data.length === 0) {
@@ -1409,12 +1418,214 @@ function renderAllocationsTable(data) {
       <td><span class="status-badge ${alloc.status === "Active" ? "allocated" : "available"}">${alloc.status || "Unknown"}</span></td>
       <td>
         <div class="action-buttons">
-          ${isAdmin && alloc.status === "Active" ? `<button class="action-btn success" onclick="returnAsset('${alloc._id}')" title="Return"><i class="fas fa-undo"></i></button>` : ""}
-          <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View"><i class="fas fa-eye"></i></button>
+          ${isAdmin ? `
+            <button class="action-btn edit" onclick="editAllocation('${alloc._id}')" title="Edit Allocation">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="action-btn delete" onclick="deleteAllocation('${alloc._id}')" title="Delete Allocation">
+              <i class="fas fa-trash"></i>
+            </button>
+            <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View Details">
+              <i class="fas fa-eye"></i>
+            </button>
+            ${alloc.status === "Active" ? `
+              <button class="action-btn success" onclick="returnAsset('${alloc._id}')" title="Return Asset">
+                <i class="fas fa-undo"></i>
+              </button>
+            ` : `
+              <button class="action-btn refresh" onclick="refreshAllocation('${alloc._id}')" title="Refresh Status">
+                <i class="fas fa-sync"></i>
+              </button>
+            `}
+          ` : `
+            <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View Details">
+              <i class="fas fa-eye"></i>
+            </button>
+            <span class="view-only-badge">View Only</span>
+          `}
         </div>
       </td>
     </tr>
   `}).join("");
+}
+
+// ===== EDIT ALLOCATION FUNCTION =====
+async function editAllocation(id) {
+  const alloc = allocations.find((a) => a._id === id);
+  if (!alloc) {
+    showToast("Allocation not found", "error");
+    return;
+  }
+
+  // Get available assets and employees
+  try {
+    const assetsData = await api.assets.getAll();
+    const employeesData = await api.users.getAll();
+    
+    const availableAssets = assetsData.filter((a) => a.status === "Available" || a._id === alloc.asset?._id);
+    
+    let assetOptions = "";
+    if (availableAssets.length > 0) {
+      assetOptions = availableAssets.map((a) =>
+        `<option value="${a._id}" ${alloc.asset?._id === a._id ? "selected" : ""}>
+          ${a.assetCode} - ${a.assetName} (${a.category})
+        </option>`
+      ).join("");
+    } else {
+      assetOptions = `<option value="">No available assets</option>`;
+    }
+
+    let employeeOptions = "";
+    if (employeesData.length > 0) {
+      employeeOptions = employeesData.map((e) =>
+        `<option value="${e._id}" ${alloc.employee?._id === e._id ? "selected" : ""}>
+          ${e.name} (${e.employeeId}) - ${e.department || "No Dept"}
+        </option>`
+      ).join("");
+    } else {
+      employeeOptions = `<option value="">No employees found</option>`;
+    }
+
+    const html = `
+      <form id="editAllocationForm" onsubmit="updateAllocation(event, '${id}')">
+        <div class="form-group">
+          <label>Asset *</label>
+          <select id="editAllocAsset" required>
+            <option value="">Select Asset</option>
+            ${assetOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Employee *</label>
+          <select id="editAllocEmployee" required>
+            <option value="">Select Employee</option>
+            ${employeeOptions}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Allocation Date</label>
+          <input type="date" id="editAllocDate" value="${alloc.allocationDate ? new Date(alloc.allocationDate).toISOString().split("T")[0] : ""}">
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select id="editAllocStatus">
+            <option value="Active" ${alloc.status === "Active" ? "selected" : ""}>Active</option>
+            <option value="Returned" ${alloc.status === "Returned" ? "selected" : ""}>Returned</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Remarks</label>
+          <textarea id="editAllocRemarks" rows="3" placeholder="Enter allocation remarks...">${alloc.remarks || ""}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Allocation</button>
+        </div>
+      </form>
+    `;
+    showModal("Edit Allocation", html);
+  } catch (error) {
+    console.error("Error loading edit data:", error);
+    showToast("Failed to load data for editing", "error");
+  }
+}
+
+// ===== UPDATE ALLOCATION FUNCTION =====
+async function updateAllocation(e, id) {
+  e.preventDefault();
+
+  const assetId = document.getElementById("editAllocAsset").value;
+  const employeeId = document.getElementById("editAllocEmployee").value;
+  const allocationDate = document.getElementById("editAllocDate").value;
+  const status = document.getElementById("editAllocStatus").value;
+  const remarks = document.getElementById("editAllocRemarks").value;
+
+  if (!assetId || assetId === "") {
+    showToast("Please select an asset", "error");
+    document.getElementById("editAllocAsset").focus();
+    return;
+  }
+  if (!employeeId || employeeId === "") {
+    showToast("Please select an employee", "error");
+    document.getElementById("editAllocEmployee").focus();
+    return;
+  }
+
+  const data = {
+    asset: assetId,
+    employee: employeeId,
+    allocationDate: allocationDate || new Date().toISOString(),
+    status: status,
+    remarks: remarks,
+  };
+
+  try {
+    await api.allocations.update(id, data);
+    closeModal();
+    showToast("Allocation updated successfully!", "success");
+    loadAllocations();
+    loadAssets();
+    loadDashboard();
+  } catch (error) {
+    console.error("Update allocation error:", error);
+    showToast(error.message || "Failed to update allocation", "error");
+  }
+}
+
+// ===== DELETE ALLOCATION FUNCTION =====
+async function deleteAllocation(id) {
+  if (!confirm("Are you sure you want to delete this allocation? This action cannot be undone.")) return;
+
+  try {
+    // Get the allocation to find which asset to update
+    const alloc = allocations.find((a) => a._id === id);
+    if (alloc && alloc.asset && alloc.asset._id) {
+      // Update asset status back to Available
+      await api.assets.update(alloc.asset._id, { status: "Available" });
+    }
+    
+    // Delete the allocation
+    await api.allocations.delete(id);
+    showToast("Allocation deleted successfully!", "success");
+    loadAllocations();
+    loadAssets();
+    loadDashboard();
+  } catch (error) {
+    console.error("Delete allocation error:", error);
+    showToast(error.message || "Failed to delete allocation", "error");
+  }
+}
+
+// ===== REFRESH ALLOCATION FUNCTION =====
+async function refreshAllocation(id) {
+  try {
+    const alloc = allocations.find((a) => a._id === id);
+    if (!alloc) {
+      showToast("Allocation not found", "error");
+      return;
+    }
+
+    // Refresh the allocation data from server
+    const freshData = await api.allocations.getAll();
+    const freshAlloc = freshData.find((a) => a._id === id);
+    
+    if (freshAlloc) {
+      // Update the local allocations array
+      const index = allocations.findIndex((a) => a._id === id);
+      if (index !== -1) {
+        allocations[index] = freshAlloc;
+      }
+      
+      renderAllocationsTable(allocations);
+      showToast("Allocation status refreshed!", "success");
+    } else {
+      showToast("Allocation no longer exists", "warning");
+      loadAllocations();
+    }
+  } catch (error) {
+    console.error("Refresh allocation error:", error);
+    showToast("Failed to refresh allocation", "error");
+  }
 }
 
 function showAddAllocationModal() {
