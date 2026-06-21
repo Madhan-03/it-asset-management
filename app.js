@@ -1,16 +1,7 @@
 // API Configuration - Auto-detect environment
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? "http://localhost:5000/api"
-    : "https://it-asset-management-811z.onrender.com/api";
-
-// ===== AUTO LOGOUT - Prevent automatic login =====
-// Check if user wants to stay logged in
-// Force logout on page load if URL has ?logout=true
-if (window.location.search.includes('logout=true')) {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  window.location.href = window.location.pathname;
-}
+    : "https://it-asset-management-8112.onrender.com/api";
 
 // State Management
 let currentUser = null;
@@ -35,7 +26,6 @@ function showToast(message, type = "info") {
     toast.classList.remove("show");
   }, 3000);
 }
-// ... rest of your code continues
 
 function showModal(title, bodyHTML) {
   document.getElementById("modalTitle").textContent = title;
