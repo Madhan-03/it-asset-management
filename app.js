@@ -3,6 +3,8 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
     ? "http://localhost:5000/api"
     : "https://it-asset-management-811z.onrender.com/api";
 
+console.log("🔗 API_URL:", API_URL);
+
 // State Management
 let currentUser = null;
 let token = null;
@@ -233,21 +235,41 @@ const api = {
   }
 };
 
-// Auth Functions
+// ===== FIXED LOGIN FUNCTION =====
 async function handleLogin(e) {
   e.preventDefault();
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
   const errorDiv = document.getElementById("loginError");
 
+  console.log("🔍 Login attempt with:", email);
+  console.log("🔗 API_URL:", API_URL);
+
   try {
     errorDiv.style.display = "none";
+    errorDiv.textContent = "";
     
-    console.log("Attempting login with:", email);
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    console.log("📡 Response status:", response.status);
     
-    const data = await api.auth.login(email, password);
-    console.log("Login successful:", data);
-    
+    const data = await response.json();
+    console.log("📦 Response data:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Login failed");
+    }
+
+    if (!data.token) {
+      throw new Error("No token received from server");
+    }
+
     token = data.token;
     currentUser = {
       _id: data._id,
@@ -264,14 +286,15 @@ async function handleLogin(e) {
 
     showToast("Login successful!", "success");
     initializeApp();
+    
   } catch (error) {
-    console.error("Login error:", error);
+    console.error("❌ Login error:", error);
     errorDiv.textContent = error.message || "Login failed. Please try again.";
     errorDiv.style.display = "block";
   }
 }
 
-// Handle Signup
+// ===== FIXED SIGNUP FUNCTION =====
 async function handleSignup(e) {
   e.preventDefault();
 
@@ -286,7 +309,9 @@ async function handleSignup(e) {
   const errorDiv = document.getElementById("signupError");
   const successDiv = document.getElementById("signupSuccess");
   errorDiv.style.display = "none";
+  errorDiv.textContent = "";
   successDiv.style.display = "none";
+  successDiv.textContent = "";
 
   if (!name || !employeeId || !email || !password) {
     errorDiv.textContent = "Please fill in all required fields";
@@ -307,15 +332,30 @@ async function handleSignup(e) {
   }
 
   try {
-    const data = await api.auth.register({
-      name,
-      employeeId,
-      email,
-      password,
-      department,
-      designation,
-      role: "employee",
+    console.log("📝 Signup attempt with:", email);
+    
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        employeeId,
+        email,
+        password,
+        department,
+        designation,
+        role: "employee",
+      }),
     });
+
+    const data = await response.json();
+    console.log("📦 Signup response:", data);
+
+    if (!response.ok) {
+      throw new Error(data.message || "Registration failed");
+    }
 
     successDiv.textContent = "Account created successfully! You can now sign in.";
     successDiv.style.display = "block";
@@ -328,6 +368,7 @@ async function handleSignup(e) {
       showToast("Account created! Please sign in.", "success");
     }, 2000);
   } catch (error) {
+    console.error("❌ Signup error:", error);
     errorDiv.textContent = error.message || "Registration failed. Please try again.";
     errorDiv.style.display = "block";
   }
@@ -1543,7 +1584,8 @@ function viewAllocation(id) {
   showModal("Allocation Details", html);
 }
 
-// ===== MAINTENANCE FUNCTIONS =====async function loadMaintenance() {
+// ===== MAINTENANCE FUNCTIONS =====
+async function loadMaintenance() {
   try {
     const data = await api.maintenance.getAll();
     maintenanceRequests = data;
