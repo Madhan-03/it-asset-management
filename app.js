@@ -1543,8 +1543,7 @@ function viewAllocation(id) {
   showModal("Allocation Details", html);
 }
 
-// ===== MAINTENANCE FUNCTIONS =====
-async function loadMaintenance() {
+// ===== MAINTENANCE FUNCTIONS =====async function loadMaintenance() {
   try {
     const data = await api.maintenance.getAll();
     maintenanceRequests = data;
