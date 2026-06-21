@@ -1349,15 +1349,13 @@ async function loadAllocations() {
   }
 }
 
-// ===== RENDER ALLOCATIONS TABLE WITH FULL ACTIONS =====
+// ===== RENDER ALLOCATIONS TABLE - REMOVED EDIT AND DELETE ICONS =====
 function renderAllocationsTable(data) {
   const tbody = document.getElementById("allocationsTableBody");
   if (!data || data.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center">No allocations found</td></tr>';
     return;
   }
-
-  const isAdmin = currentUser && currentUser.role === "admin";
 
   // Try to get employee names from the employees array if needed
   const employeeMap = {};
@@ -1414,30 +1412,17 @@ function renderAllocationsTable(data) {
       <td><span class="status-badge ${alloc.status === "Active" ? "allocated" : "available"}">${alloc.status || "Unknown"}</span></td>
       <td>
         <div class="action-buttons">
-          ${isAdmin ? `
-            <button class="action-btn edit" onclick="editAllocation('${alloc._id}')" title="Edit Allocation">
-              <i class="fas fa-edit"></i>
+          <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View Details">
+            <i class="fas fa-eye"></i>
+          </button>
+          ${alloc.status === "Active" ? `
+            <button class="action-btn success" onclick="returnAsset('${alloc._id}')" title="Return Asset">
+              <i class="fas fa-undo"></i>
             </button>
-            <button class="action-btn delete" onclick="deleteAllocation('${alloc._id}')" title="Delete Allocation">
-              <i class="fas fa-trash"></i>
-            </button>
-            <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View Details">
-              <i class="fas fa-eye"></i>
-            </button>
-            ${alloc.status === "Active" ? `
-              <button class="action-btn success" onclick="returnAsset('${alloc._id}')" title="Return Asset">
-                <i class="fas fa-undo"></i>
-              </button>
-            ` : `
-              <button class="action-btn refresh" onclick="refreshAllocation('${alloc._id}')" title="Refresh Status">
-                <i class="fas fa-sync"></i>
-              </button>
-            `}
           ` : `
-            <button class="action-btn view" onclick="viewAllocation('${alloc._id}')" title="View Details">
-              <i class="fas fa-eye"></i>
+            <button class="action-btn refresh" onclick="refreshAllocation('${alloc._id}')" title="Refresh Status">
+              <i class="fas fa-sync"></i>
             </button>
-            <span class="view-only-badge">View Only</span>
           `}
         </div>
       </td>
@@ -1445,7 +1430,7 @@ function renderAllocationsTable(data) {
   `}).join("");
 }
 
-// ===== DELETE ALLOCATION FUNCTION - FIXED =====
+// ===== DELETE ALLOCATION FUNCTION - KEPT FOR REFERENCE BUT NOT USED IN UI =====
 async function deleteAllocation(id) {
   if (!confirm("Are you sure you want to delete this allocation? This action cannot be undone.")) return;
 
@@ -1506,7 +1491,7 @@ async function deleteAllocation(id) {
   }
 }
 
-// ===== EDIT ALLOCATION FUNCTION - FIXED =====
+// ===== EDIT ALLOCATION FUNCTION - KEPT FOR REFERENCE BUT NOT USED IN UI =====
 async function editAllocation(id) {
   const alloc = allocations.find((a) => a._id === id);
   if (!alloc) {
@@ -1598,7 +1583,7 @@ async function editAllocation(id) {
   showModal("Edit Allocation", html);
 }
 
-// ===== UPDATE ALLOCATION FUNCTION - FIXED =====
+// ===== UPDATE ALLOCATION FUNCTION - KEPT FOR REFERENCE BUT NOT USED IN UI =====
 async function updateAllocation(e, id) {
   e.preventDefault();
 
