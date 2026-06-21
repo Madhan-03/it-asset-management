@@ -1869,7 +1869,7 @@ async function updateMaintenance(e, id) {
   }
 }
 
-// ===== REPORTS FUNCTIONS =====
+// ===== FIXED REPORTS FUNCTIONS =====
 function loadReports() {
   const reportsPage = document.getElementById("reportsPage");
   if (reportsPage) {
@@ -1990,6 +1990,7 @@ async function generateReport(type) {
         title = "Employee Asset Report";
         break;
       case "allocation":
+        // FIXED: Handle null employee/asset references in Allocation History
         data = await api.reports.getAllocationHistory();
         title = "Allocation History";
         break;
@@ -2003,12 +2004,67 @@ async function generateReport(type) {
 
     console.log("Report data:", data);
 
-    if (data && data.data && data.data.length > 0) {
-      currentReportData = data.data;
+    // ===== FIX: Handle null references in allocation data =====
+    let reportData = [];
+    let errorRecords = [];
+
+    if (data && data.data && Array.isArray(data.data)) {
+      reportData = data.data.map(item => {
+        // Create a safe copy with null checks
+        const safeItem = {};
+        Object.keys(item).forEach(key => {
+          const value = item[key];
+          if (value === null || value === undefined) {
+            safeItem[key] = 'N/A';
+          } else if (typeof value === 'object' && value !== null) {
+            // For nested objects like employee or asset, extract name or ID
+            if (value.name) {
+              safeItem[key] = value.name;
+            } else if (value.assetName) {
+              safeItem[key] = value.assetName;
+            } else if (value.employeeId) {
+              safeItem[key] = value.employeeId;
+            } else if (value.assetCode) {
+              safeItem[key] = value.assetCode;
+            } else if (Array.isArray(value)) {
+              safeItem[key] = value.map(v => 
+                typeof v === 'object' && v !== null ? (v.name || v.assetName || JSON.stringify(v)) : v
+              ).join(', ');
+            } else {
+              safeItem[key] = JSON.stringify(value);
+            }
+          } else {
+            safeItem[key] = value;
+          }
+        });
+        return safeItem;
+      });
+
+      // Filter out completely empty records
+      reportData = reportData.filter(item => 
+        Object.values(item).some(v => v !== 'N/A' && v !== '' && v !== null && v !== undefined)
+      );
+
+    } else if (data && !Array.isArray(data.data)) {
+      // If data.data is not an array, try to use data directly if it's an array
+      if (Array.isArray(data)) {
+        reportData = data;
+      } else {
+        reportData = [];
+      }
+    } else {
+      reportData = [];
+    }
+
+    console.log("Processed report data:", reportData);
+    console.log("Error records skipped:", errorRecords.length);
+
+    if (reportData.length > 0) {
+      currentReportData = reportData;
       currentReportTitle = title;
       titleEl.textContent = title;
 
-      const columns = Object.keys(data.data[0]);
+      const columns = Object.keys(reportData[0]);
       
       let tableHTML = `
         <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
@@ -2019,13 +2075,16 @@ async function generateReport(type) {
               </tr>
             </thead>
             <tbody>
-              ${data.data.map(row => `
+              ${reportData.map(row => `
                 <tr style="border-bottom: 1px solid var(--border-color);">
                   ${columns.map(col => {
                     let value = row[col];
+                    if (value === null || value === undefined || value === 'N/A') {
+                      return `<td style="padding: 10px 15px; color: var(--text-muted);">N/A</td>`;
+                    }
                     if (Array.isArray(value)) {
                       value = value.map(item => {
-                        if (typeof item === 'object') {
+                        if (typeof item === 'object' && item !== null) {
                           return Object.values(item).join(' - ');
                         }
                         return item;
@@ -2034,21 +2093,22 @@ async function generateReport(type) {
                     if (typeof value === 'object' && value !== null) {
                       value = JSON.stringify(value);
                     }
-                    return `<td style="padding: 10px 15px;">${value || 'N/A'}</td>`;
+                    return `<td style="padding: 10px 15px;">${String(value)}</td>`;
                   }).join('')}
                 </tr>
               `).join('')}
             </tbody>
           </table>
           <div style="padding: 12px 15px; background: var(--bg-secondary); color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <span><strong>Total Records:</strong> ${data.count || data.data.length}</span>
+            <span><strong>Total Records:</strong> ${reportData.length}</span>
+            ${errorRecords.length > 0 ? `<span style="color: #f59e0b;"><strong>⚠️ Skipped:</strong> ${errorRecords.length} records with missing data</span>` : ''}
             <span><strong>Generated:</strong> ${new Date(data.generatedDate || Date.now()).toLocaleString()}</span>
           </div>
         </div>
       `;
 
       containerEl.innerHTML = tableHTML;
-      showToast(`✅ ${title} generated successfully! Found ${data.data.length} records.`, "success");
+      showToast(`✅ ${title} generated successfully! Found ${reportData.length} records.`, "success");
     } else {
       containerEl.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; background: var(--bg-secondary); border-radius: 8px;">
@@ -2061,12 +2121,13 @@ async function generateReport(type) {
               type === 'allocation' ? 'Create some asset allocations first.' :
               'Create some maintenance requests first.'}
           </p>
+          ${errorRecords.length > 0 ? `<p style="color: #f59e0b; margin-top: 10px;">⚠️ ${errorRecords.length} records were skipped due to missing data.</p>` : ''}
         </div>
       `;
       currentReportData = null;
       currentReportTitle = title;
       titleEl.textContent = title;
-      showToast("No data available for this report", "warning");
+      showToast("No valid data available for this report", "warning");
     }
   } catch (error) {
     console.error("Report generation error:", error);
@@ -2075,6 +2136,9 @@ async function generateReport(type) {
         <i class="fas fa-exclamation-circle" style="font-size: 36px;"></i>
         <h3>Failed to Generate Report</h3>
         <p style="color: var(--text-muted);">${error.message || 'Please try again'}</p>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 8px;">
+          ${error.message?.includes('null') ? '⚠️ Some records have missing employee or asset data. Please check your database.' : ''}
+        </p>
         <button class="btn-secondary" onclick="generateReport('${type}')" style="margin-top: 15px;">
           <i class="fas fa-redo"></i> Retry
         </button>
@@ -2131,6 +2195,9 @@ function downloadCurrentReport() {
               <tr>
                 ${columns.map(col => {
                   let value = row[col];
+                  if (value === null || value === undefined || value === 'N/A') {
+                    return `<td>N/A</td>`;
+                  }
                   if (Array.isArray(value)) {
                     value = value.map(item => {
                       if (typeof item === 'object') {
@@ -2142,7 +2209,7 @@ function downloadCurrentReport() {
                   if (typeof value === 'object' && value !== null) {
                     value = JSON.stringify(value);
                   }
-                  return `<td>${value || 'N/A'}</td>`;
+                  return `<td>${String(value)}</td>`;
                 }).join('')}
               </tr>
             `).join('')}
