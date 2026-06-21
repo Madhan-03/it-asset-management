@@ -468,7 +468,7 @@ body {
   box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
 }
 
-/* ===== SIDEBAR ===== */
+/* ===== SIDEBAR - UPDATED ===== */
 .sidebar {
   position: fixed;
   left: 0;
@@ -483,6 +483,7 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+  max-height: 100vh;
 }
 
 /* Desktop: Sidebar always visible */
@@ -497,6 +498,8 @@ body {
   .sidebar {
     transform: translateX(-100%);
     width: 280px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .sidebar.open {
@@ -599,9 +602,8 @@ body {
 .sidebar-nav {
   list-style: none;
   padding: 12px 8px;
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
-  /* Ensure nav items don't push footer out of view */
   min-height: 0;
 }
 
@@ -668,24 +670,37 @@ body {
   font-size: 18px;
 }
 
-/* Sidebar Footer - FIXED: Always visible at bottom */
+/* ===== SIDEBAR FOOTER - UPDATED ===== */
 .sidebar-footer {
   padding: 16px 24px;
   border-top: 1px solid rgba(255,255,255,0.05);
-  flex-shrink: 0;
   margin-top: auto;
+  flex-shrink: 0;
   background: var(--bg-sidebar);
-  /* Ensure footer stays at bottom */
   position: sticky;
   bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.2);
 }
 
+@media (max-width: 768px) {
+  .sidebar-footer {
+    padding: 12px 16px;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-sidebar);
+    border-top: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ===== LOGOUT BUTTON - UPDATED ===== */
 .btn-logout {
   width: 100%;
-  padding: 10px;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.05);
-  color: var(--text-muted);
+  padding: 12px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
   font-weight: 500;
   cursor: pointer;
   transition: var(--transition);
@@ -694,12 +709,30 @@ body {
   justify-content: center;
   gap: 8px;
   border-radius: 8px;
+  font-size: 15px;
 }
 
 .btn-logout:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ffffff;
+  transform: scale(1.02);
+}
+
+@media (min-width: 769px) {
+  .btn-logout {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+  
+  .btn-logout:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    transform: none;
+  }
 }
 
 /* ===== SIDEBAR OVERLAY ===== */
