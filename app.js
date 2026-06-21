@@ -1349,7 +1349,7 @@ async function loadAllocations() {
   }
 }
 
-// ===== UPDATED: Render Allocations Table with Full Actions =====
+// ===== RENDER ALLOCATIONS TABLE WITH FULL ACTIONS =====
 function renderAllocationsTable(data) {
   const tbody = document.getElementById("allocationsTableBody");
   if (!data || data.length === 0) {
@@ -1374,12 +1374,10 @@ function renderAllocationsTable(data) {
       if (typeof alloc.employee === 'object') {
         employeeName = alloc.employee.name || alloc.employee.employeeId || "Unknown Employee";
         employeeId = alloc.employee.employeeId || "";
-        // If name is still missing, try to get from employeeMap
         if (employeeName === "Unknown Employee" && alloc.employee._id && employeeMap[alloc.employee._id]) {
           employeeName = employeeMap[alloc.employee._id];
         }
       } else if (typeof alloc.employee === 'string') {
-        // If employee is just an ID string, look it up
         if (employeeMap[alloc.employee]) {
           employeeName = employeeMap[alloc.employee];
         } else {
@@ -1398,9 +1396,7 @@ function renderAllocationsTable(data) {
       }
     }
 
-    // If employee name is still "Unknown Employee" or "Unknown", try to find by employeeId in the allocation
     if (employeeName === "Unknown Employee" || employeeName === "Unknown") {
-      // Check if there's an employeeId field directly on allocation
       if (alloc.employeeId) {
         const found = employees.find(e => e.employeeId === alloc.employeeId || e._id === alloc.employeeId);
         if (found) {
@@ -1449,7 +1445,68 @@ function renderAllocationsTable(data) {
   `}).join("");
 }
 
-// ===== EDIT ALLOCATION FUNCTION =====
+// ===== DELETE ALLOCATION FUNCTION - FIXED =====
+async function deleteAllocation(id) {
+  if (!confirm("Are you sure you want to delete this allocation? This action cannot be undone.")) return;
+
+  try {
+    // Get the allocation to find which asset to update
+    const alloc = allocations.find((a) => a._id === id);
+    if (alloc) {
+      // Check if asset exists and has an _id
+      let assetId = null;
+      if (alloc.asset) {
+        if (typeof alloc.asset === 'object' && alloc.asset._id) {
+          assetId = alloc.asset._id;
+        } else if (typeof alloc.asset === 'string') {
+          assetId = alloc.asset;
+        }
+      }
+      
+      // If we have an asset ID, update its status back to Available
+      if (assetId) {
+        try {
+          await api.assets.update(assetId, { status: "Available" });
+          console.log("Asset status updated to Available");
+        } catch (assetError) {
+          console.log("Could not update asset status:", assetError.message);
+        }
+      }
+    }
+    
+    // Delete the allocation
+    await api.allocations.delete(id);
+    showToast("Allocation deleted successfully!", "success");
+    loadAllocations();
+    loadAssets();
+    loadDashboard();
+  } catch (error) {
+    console.error("Delete allocation error:", error);
+    // Try direct fetch as fallback
+    try {
+      const response = await fetch(`${API_URL}/allocations/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      
+      showToast("Allocation deleted successfully!", "success");
+      loadAllocations();
+      loadAssets();
+      loadDashboard();
+    } catch (fallbackError) {
+      console.error("Fallback delete error:", fallbackError);
+      showToast(error.message || "Failed to delete allocation", "error");
+    }
+  }
+}
+
+// ===== EDIT ALLOCATION FUNCTION - FIXED =====
 async function editAllocation(id) {
   const alloc = allocations.find((a) => a._id === id);
   if (!alloc) {
@@ -1457,113 +1514,61 @@ async function editAllocation(id) {
     return;
   }
 
-  // Get available assets and employees
-  try {
-    const assetsData = await api.assets.getAll();
-    const employeesData = await api.users.getAll();
-    
-    // Include current asset even if not available
-    const availableAssets = assetsData.filter((a) => a.status === "Available" || a._id === alloc.asset?._id);
-    
-    let assetOptions = "";
-    if (availableAssets.length > 0) {
-      assetOptions = availableAssets.map((a) =>
-        `<option value="${a._id}" ${alloc.asset?._id === a._id ? "selected" : ""}>
-          ${a.assetCode} - ${a.assetName} (${a.category})
-        </option>`
-      ).join("");
-    } else {
-      assetOptions = `<option value="${alloc.asset?._id || ''}" selected>${alloc.asset?.assetName || 'Current Asset'}</option>`;
+  console.log("Editing allocation:", alloc);
+
+  // Get the asset and employee IDs safely
+  let assetId = null;
+  let employeeId = null;
+  let assetName = "Unknown Asset";
+  let employeeName = "Unknown Employee";
+  
+  if (alloc.asset) {
+    if (typeof alloc.asset === 'object') {
+      assetId = alloc.asset._id || null;
+      assetName = alloc.asset.assetName || alloc.asset.assetCode || "Unknown Asset";
+    } else if (typeof alloc.asset === 'string') {
+      assetId = alloc.asset;
+      const foundAsset = assets.find(a => a._id === assetId || a.assetCode === assetId);
+      if (foundAsset) {
+        assetName = foundAsset.assetName || foundAsset.assetCode || "Unknown Asset";
+      }
     }
-
-    let employeeOptions = "";
-    if (employeesData.length > 0) {
-      employeeOptions = employeesData.map((e) =>
-        `<option value="${e._id}" ${alloc.employee?._id === e._id ? "selected" : ""}>
-          ${e.name} (${e.employeeId}) - ${e.department || "No Dept"}
-        </option>`
-      ).join("");
-    } else {
-      employeeOptions = `<option value="${alloc.employee?._id || ''}" selected>${alloc.employee?.name || 'Current Employee'}</option>`;
-    }
-
-    // Format date properly
-    let allocationDate = "";
-    if (alloc.allocationDate) {
-      const date = new Date(alloc.allocationDate);
-      allocationDate = date.toISOString().split("T")[0];
-    }
-
-    const html = `
-      <form id="editAllocationForm" onsubmit="updateAllocation(event, '${id}')">
-        <div class="form-group">
-          <label>Asset *</label>
-          <select id="editAllocAsset" required>
-            <option value="">Select Asset</option>
-            ${assetOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Employee *</label>
-          <select id="editAllocEmployee" required>
-            <option value="">Select Employee</option>
-            ${employeeOptions}
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Allocation Date</label>
-          <input type="date" id="editAllocDate" value="${allocationDate}">
-        </div>
-        <div class="form-group">
-          <label>Status</label>
-          <select id="editAllocStatus">
-            <option value="Active" ${alloc.status === "Active" ? "selected" : ""}>Active</option>
-            <option value="Returned" ${alloc.status === "Returned" ? "selected" : ""}>Returned</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Remarks</label>
-          <textarea id="editAllocRemarks" rows="3" placeholder="Enter allocation remarks...">${alloc.remarks || ""}</textarea>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Allocation</button>
-        </div>
-      </form>
-    `;
-    showModal("Edit Allocation", html);
-  } catch (error) {
-    console.error("Error loading edit data:", error);
-    // Show a simpler edit form without loading assets/employees
-    showSimpleEditAllocation(id);
-  }
-}
-
-// ===== SIMPLE EDIT ALLOCATION (Fallback) =====
-function showSimpleEditAllocation(id) {
-  const alloc = allocations.find((a) => a._id === id);
-  if (!alloc) {
-    showToast("Allocation not found", "error");
-    return;
   }
 
+  if (alloc.employee) {
+    if (typeof alloc.employee === 'object') {
+      employeeId = alloc.employee._id || null;
+      employeeName = alloc.employee.name || alloc.employee.employeeId || "Unknown Employee";
+    } else if (typeof alloc.employee === 'string') {
+      employeeId = alloc.employee;
+      const foundEmployee = employees.find(e => e._id === employeeId || e.employeeId === employeeId);
+      if (foundEmployee) {
+        employeeName = foundEmployee.name || foundEmployee.employeeId || "Unknown Employee";
+      }
+    }
+  }
+
+  // Format date properly
   let allocationDate = "";
   if (alloc.allocationDate) {
     const date = new Date(alloc.allocationDate);
-    allocationDate = date.toISOString().split("T")[0];
+    if (!isNaN(date.getTime())) {
+      allocationDate = date.toISOString().split("T")[0];
+    }
   }
 
+  // Show a simple edit form with the current values
   const html = `
     <form id="editAllocationForm" onsubmit="updateAllocation(event, '${id}')">
       <div style="background: var(--bg-input); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
           <div>
             <span style="color: var(--text-muted); font-size: 12px;">Asset</span>
-            <div style="font-weight: 600;">${alloc.asset?.assetName || 'Unknown'} (${alloc.asset?.assetCode || ''})</div>
+            <div style="font-weight: 600;">${assetName}</div>
           </div>
           <div>
             <span style="color: var(--text-muted); font-size: 12px;">Employee</span>
-            <div style="font-weight: 600;">${alloc.employee?.name || 'Unknown'} (${alloc.employee?.employeeId || ''})</div>
+            <div style="font-weight: 600;">${employeeName}</div>
           </div>
         </div>
       </div>
@@ -1582,6 +1587,8 @@ function showSimpleEditAllocation(id) {
         <label>Remarks</label>
         <textarea id="editAllocRemarks" rows="3" placeholder="Enter allocation remarks...">${alloc.remarks || ""}</textarea>
       </div>
+      <input type="hidden" id="editAllocAsset" value="${assetId || ''}">
+      <input type="hidden" id="editAllocEmployee" value="${employeeId || ''}">
       <div class="modal-footer">
         <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
         <button type="submit" class="btn-primary"><i class="fas fa-save"></i> Update Allocation</button>
@@ -1591,7 +1598,7 @@ function showSimpleEditAllocation(id) {
   showModal("Edit Allocation", html);
 }
 
-// ===== UPDATE ALLOCATION FUNCTION =====
+// ===== UPDATE ALLOCATION FUNCTION - FIXED =====
 async function updateAllocation(e, id) {
   e.preventDefault();
 
@@ -1601,7 +1608,7 @@ async function updateAllocation(e, id) {
   const status = document.getElementById("editAllocStatus")?.value;
   const remarks = document.getElementById("editAllocRemarks")?.value;
 
-  // If using simple form, get current values from allocation
+  // Get current allocation
   const alloc = allocations.find((a) => a._id === id);
   
   let data = {
@@ -1610,24 +1617,30 @@ async function updateAllocation(e, id) {
     remarks: remarks || alloc?.remarks || "",
   };
 
-  // Only include asset and employee if they exist in the form
+  // Use the hidden fields or fallback to current values
   if (assetId && assetId !== "") {
     data.asset = assetId;
+  } else if (alloc?.asset) {
+    if (typeof alloc.asset === 'object' && alloc.asset._id) {
+      data.asset = alloc.asset._id;
+    } else if (typeof alloc.asset === 'string') {
+      data.asset = alloc.asset;
+    }
   }
+
   if (employeeId && employeeId !== "") {
     data.employee = employeeId;
+  } else if (alloc?.employee) {
+    if (typeof alloc.employee === 'object' && alloc.employee._id) {
+      data.employee = alloc.employee._id;
+    } else if (typeof alloc.employee === 'string') {
+      data.employee = alloc.employee;
+    }
   }
 
-  // If using simple form, keep existing asset and employee
-  if (!data.asset && alloc?.asset?._id) {
-    data.asset = alloc.asset._id;
-  }
-  if (!data.employee && alloc?.employee?._id) {
-    data.employee = alloc.employee._id;
-  }
+  console.log("Updating allocation with data:", data);
 
   try {
-    console.log("Updating allocation with data:", data);
     const result = await api.allocations.update(id, data);
     console.log("Update result:", result);
     closeModal();
@@ -1668,30 +1681,6 @@ async function updateAllocation(e, id) {
   }
 }
 
-// ===== DELETE ALLOCATION FUNCTION =====
-async function deleteAllocation(id) {
-  if (!confirm("Are you sure you want to delete this allocation? This action cannot be undone.")) return;
-
-  try {
-    // Get the allocation to find which asset to update
-    const alloc = allocations.find((a) => a._id === id);
-    if (alloc && alloc.asset && alloc.asset._id) {
-      // Update asset status back to Available
-      await api.assets.update(alloc.asset._id, { status: "Available" });
-    }
-    
-    // Delete the allocation
-    await api.allocations.delete(id);
-    showToast("Allocation deleted successfully!", "success");
-    loadAllocations();
-    loadAssets();
-    loadDashboard();
-  } catch (error) {
-    console.error("Delete allocation error:", error);
-    showToast(error.message || "Failed to delete allocation", "error");
-  }
-}
-
 // ===== REFRESH ALLOCATION FUNCTION =====
 async function refreshAllocation(id) {
   try {
@@ -1701,12 +1690,10 @@ async function refreshAllocation(id) {
       return;
     }
 
-    // Refresh the allocation data from server
     const freshData = await api.allocations.getAll();
     const freshAlloc = freshData.find((a) => a._id === id);
     
     if (freshAlloc) {
-      // Update the local allocations array
       const index = allocations.findIndex((a) => a._id === id);
       if (index !== -1) {
         allocations[index] = freshAlloc;
@@ -1907,7 +1894,6 @@ function viewAllocation(id) {
   const alloc = allocations.find((a) => a._id === id);
   if (!alloc) return;
 
-  // Safely get names
   const employeeName = alloc.employee?.name || alloc.employee?.employeeId || "Unknown Employee";
   const employeeId = alloc.employee?.employeeId || "";
   const assetName = alloc.asset?.assetName || alloc.asset?.assetCode || "Unknown Asset";
@@ -2236,7 +2222,7 @@ async function updateMaintenance(e, id) {
   }
 }
 
-// ===== FIXED REPORTS FUNCTIONS =====
+// ===== REPORTS FUNCTIONS =====
 function loadReports() {
   const reportsPage = document.getElementById("reportsPage");
   if (reportsPage) {
@@ -2287,7 +2273,6 @@ function loadReports() {
 let currentReportData = null;
 let currentReportTitle = "";
 
-// ===== FIXED: generateReport with proper preview for Allocation History =====
 async function generateReport(type) {
   const preview = document.getElementById("reportPreview");
   
@@ -2370,27 +2355,17 @@ async function generateReport(type) {
 
     console.log("Report data received:", data);
 
-    // ===== FIX: Handle different data structures =====
     let reportData = [];
     
-    // Check if data is an array directly
     if (Array.isArray(data)) {
       reportData = data;
-    } 
-    // Check if data has a data property that is an array
-    else if (data && data.data && Array.isArray(data.data)) {
+    } else if (data && data.data && Array.isArray(data.data)) {
       reportData = data.data;
-    }
-    // Check if data has a result property that is an array
-    else if (data && data.result && Array.isArray(data.result)) {
+    } else if (data && data.result && Array.isArray(data.result)) {
       reportData = data.result;
-    }
-    // If data is an object with records
-    else if (data && data.records && Array.isArray(data.records)) {
+    } else if (data && data.records && Array.isArray(data.records)) {
       reportData = data.records;
-    }
-    // Try to extract any array from the data
-    else if (data && typeof data === 'object') {
+    } else if (data && typeof data === 'object') {
       for (const key in data) {
         if (Array.isArray(data[key]) && data[key].length > 0) {
           reportData = data[key];
@@ -2402,7 +2377,6 @@ async function generateReport(type) {
     console.log("Extracted report data:", reportData);
     console.log("Report data length:", reportData.length);
 
-    // ===== Process the data to handle null/undefined values =====
     let processedData = [];
     let skippedCount = 0;
 
@@ -2414,7 +2388,6 @@ async function generateReport(type) {
           if (value === null || value === undefined) {
             safeItem[key] = 'N/A';
           } else if (typeof value === 'object' && value !== null) {
-            // For nested objects like employee or asset, extract the name
             if (value.name) {
               safeItem[key] = value.name;
             } else if (value.assetName) {
@@ -2437,7 +2410,6 @@ async function generateReport(type) {
         return safeItem;
       });
 
-      // Filter out records that are completely empty
       processedData = processedData.filter(item => 
         Object.values(item).some(v => v !== 'N/A' && v !== '' && v !== null && v !== undefined)
       );
@@ -2455,7 +2427,6 @@ async function generateReport(type) {
 
       const columns = Object.keys(processedData[0]);
       
-      // Build the table HTML
       let tableHTML = `
         <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -2500,7 +2471,6 @@ async function generateReport(type) {
       containerEl.innerHTML = tableHTML;
       showToast(`✅ ${title} generated successfully! Found ${processedData.length} records.`, "success");
     } else {
-      // No data available
       containerEl.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; background: var(--bg-secondary); border-radius: 8px;">
           <i class="fas fa-inbox" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;"></i>
@@ -3903,6 +3873,5 @@ document.addEventListener("DOMContentLoaded", () => {
     showLogin();
   }
 
-  // Test connection
   testConnection();
 });
