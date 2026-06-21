@@ -9,7 +9,7 @@ require("dotenv").config();
 
 const app = express();
 
-// ===== CORS Configuration - Allow all origins for development =====
+// ===== CORS Configuration =====
 app.use(cors({
   origin: [
     'http://localhost:5500',
@@ -18,7 +18,8 @@ app.use(cors({
     'http://127.0.0.1:5500',
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5000',
-    'null'
+    'null',
+    'https://it-asset-management-811z.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -29,14 +30,11 @@ app.use(express.json());
 
 // ===== SERVE STATIC FILES =====
 console.log('📁 Current directory:', __dirname);
-
-// Serve static files from current directory
 app.use(express.static(__dirname));
 
-// ===== ROOT ROUTE - Serve index.html =====
+// ===== ROOT ROUTE =====
 app.get("/", (req, res) => {
   const filePath = path.join(__dirname, 'index.html');
-  
   if (fs.existsSync(filePath)) {
     console.log('✅ Serving index.html');
     res.sendFile(filePath);
@@ -53,7 +51,7 @@ app.get("/", (req, res) => {
   }
 });
 
-// ===== HEALTH CHECK ENDPOINT =====
+// ===== HEALTH CHECK =====
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
@@ -63,7 +61,6 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ===== API STATUS ENDPOINT =====
 app.get("/api", (req, res) => {
   res.json({
     status: "✅ Server is running!",
@@ -332,8 +329,6 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/auth/profile", auth, async (req, res) => {
   res.json(req.user);
 });
-
-// ===== PROFILE UPDATE ROUTE =====
 
 app.put("/api/auth/profile", auth, async (req, res) => {
   try {
@@ -971,10 +966,10 @@ app.get("/api/reports/employee-assets", auth, async (req, res) => {
       }).populate("asset", "assetName assetCode category status");
 
       const assets = allocations.map((alloc) => ({
-        assetName: alloc.asset.assetName,
-        assetCode: alloc.asset.assetCode,
-        category: alloc.asset.category,
-        status: alloc.asset.status,
+        assetName: alloc.asset ? alloc.asset.assetName : "N/A",
+        assetCode: alloc.asset ? alloc.asset.assetCode : "N/A",
+        category: alloc.asset ? alloc.asset.category : "N/A",
+        status: alloc.asset ? alloc.asset.status : "N/A",
         allocationDate: alloc.allocationDate
           ? new Date(alloc.allocationDate).toLocaleDateString()
           : "N/A",
@@ -1029,10 +1024,10 @@ app.get("/api/reports/employee-assets", auth, async (req, res) => {
       }).populate("asset", "assetName assetCode category status");
 
       const assets = allocations.map((alloc) => ({
-        assetName: alloc.asset.assetName,
-        assetCode: alloc.asset.assetCode,
-        category: alloc.asset.category,
-        status: alloc.asset.status,
+        assetName: alloc.asset ? alloc.asset.assetName : "N/A",
+        assetCode: alloc.asset ? alloc.asset.assetCode : "N/A",
+        category: alloc.asset ? alloc.asset.category : "N/A",
+        status: alloc.asset ? alloc.asset.status : "N/A",
         allocationDate: alloc.allocationDate
           ? new Date(alloc.allocationDate).toLocaleDateString()
           : "N/A",
@@ -1074,6 +1069,7 @@ app.get("/api/reports/employee-assets", auth, async (req, res) => {
   }
 });
 
+// ===== FIXED: ALLOCATION HISTORY REPORT =====
 app.get("/api/reports/allocation-history", auth, async (req, res) => {
   try {
     const { fromDate, toDate } = req.query;
@@ -1094,8 +1090,8 @@ app.get("/api/reports/allocation-history", auth, async (req, res) => {
     }
 
     const allocations = await Allocation.find(query)
-      .populate("asset", "assetName assetCode category")
-      .populate("employee", "name employeeId department")
+      .populate("asset", "assetName assetCode category brand model serialNumber status condition cost location purchaseDate warrantyExpiryDate")
+      .populate("employee", "name employeeId department designation")
       .populate("allocatedBy", "name")
       .sort({ allocationDate: -1 });
 
@@ -1110,22 +1106,45 @@ app.get("/api/reports/allocation-history", auth, async (req, res) => {
       });
     }
 
-    const reportData = allocations.map((alloc) => ({
-      assetName: alloc.asset.assetName,
-      assetCode: alloc.asset.assetCode,
-      category: alloc.asset.category,
-      employeeName: alloc.employee.name,
-      employeeId: alloc.employee.employeeId,
-      department: alloc.employee.department || "N/A",
-      allocatedBy: alloc.allocatedBy ? alloc.allocatedBy.name : "System",
-      allocationDate: new Date(alloc.allocationDate).toLocaleDateString(),
-      returnDate: alloc.returnDate
-        ? new Date(alloc.returnDate).toLocaleDateString()
-        : "Not Returned",
-      status: alloc.status,
-      condition: alloc.condition,
-      remarks: alloc.remarks || "N/A",
-    }));
+    const reportData = allocations.map((alloc) => {
+      // ===== SAFE DATA EXTRACTION WITH NULL CHECKS =====
+      const asset = alloc.asset || {};
+      const employee = alloc.employee || {};
+      const allocatedBy = alloc.allocatedBy || {};
+
+      return {
+        assetName: asset.assetName || "N/A",
+        assetCode: asset.assetCode || "N/A",
+        category: asset.category || "N/A",
+        brand: asset.brand || "N/A",
+        model: asset.model || "N/A",
+        serialNumber: asset.serialNumber || "N/A",
+        assetStatus: asset.status || "N/A",
+        assetCondition: asset.condition || "N/A",
+        cost: asset.cost || 0,
+        location: asset.location || "N/A",
+        purchaseDate: asset.purchaseDate
+          ? new Date(asset.purchaseDate).toLocaleDateString()
+          : "N/A",
+        warrantyExpiryDate: asset.warrantyExpiryDate
+          ? new Date(asset.warrantyExpiryDate).toLocaleDateString()
+          : "N/A",
+        employeeName: employee.name || "N/A",
+        employeeId: employee.employeeId || "N/A",
+        department: employee.department || "N/A",
+        designation: employee.designation || "N/A",
+        allocatedBy: allocatedBy.name || "System",
+        allocationDate: alloc.allocationDate
+          ? new Date(alloc.allocationDate).toLocaleDateString()
+          : "N/A",
+        returnDate: alloc.returnDate
+          ? new Date(alloc.returnDate).toLocaleDateString()
+          : "Not Returned",
+        status: alloc.status || "N/A",
+        condition: alloc.condition || "N/A",
+        remarks: alloc.remarks || "N/A",
+      };
+    });
 
     res.json({
       success: true,
@@ -1181,19 +1200,21 @@ app.get("/api/reports/maintenance-history", auth, async (req, res) => {
     }
 
     const reportData = maintenanceRequests.map((req) => ({
-      assetName: req.asset.assetName,
-      assetCode: req.asset.assetCode,
-      category: req.asset.category,
-      employeeName: req.employee.name,
-      employeeId: req.employee.employeeId,
-      department: req.employee.department || "N/A",
-      issue: req.issue,
+      assetName: req.asset ? req.asset.assetName : "N/A",
+      assetCode: req.asset ? req.asset.assetCode : "N/A",
+      category: req.asset ? req.asset.category : "N/A",
+      employeeName: req.employee ? req.employee.name : "N/A",
+      employeeId: req.employee ? req.employee.employeeId : "N/A",
+      department: req.employee ? (req.employee.department || "N/A") : "N/A",
+      issue: req.issue || "N/A",
       description: req.description || "N/A",
-      priority: req.priority,
-      status: req.status,
+      priority: req.priority || "N/A",
+      status: req.status || "N/A",
       assignedTo: req.assignedTo ? req.assignedTo.name : "N/A",
       resolution: req.resolution || "N/A",
-      createdDate: new Date(req.createdAt).toLocaleDateString(),
+      createdDate: req.createdAt
+        ? new Date(req.createdAt).toLocaleDateString()
+        : "N/A",
       resolvedDate: req.resolvedDate
         ? new Date(req.resolvedDate).toLocaleDateString()
         : "N/A",
