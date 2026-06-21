@@ -775,17 +775,20 @@ async function loadDashboard() {
     const recentAllocationsEl = document.getElementById("recentAllocations");
     if (recentAllocationsEl) {
       if (recentAllocations.length > 0) {
-        recentAllocationsEl.innerHTML = recentAllocations.map((a) => `
+        recentAllocationsEl.innerHTML = recentAllocations.map((a) => {
+          const empName = a.employee?.name || a.employee?.employeeId || "Unknown Employee";
+          const assetName = a.asset?.assetName || a.asset?.assetCode || "Unknown Asset";
+          return `
           <div class="allocation-item" style="padding: 10px 0; border-bottom: 1px solid var(--border-color);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
-              <span><strong>${a.asset?.assetName || "Asset"}</strong> → ${a.employee?.name || "Employee"}</span>
+              <span><strong>${assetName}</strong> → ${empName}</span>
               <span style="color: var(--text-muted); font-size: 12px;">${formatDate(a.allocationDate)}</span>
             </div>
             <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
               <span class="status-badge ${a.status === "Active" ? "allocated" : "available"}">${a.status === "Active" ? "Active" : "Returned"}</span>
             </div>
           </div>
-        `).join("");
+        `}).join("");
       } else {
         recentAllocationsEl.innerHTML = '<p class="empty-state">No recent allocations</p>';
       }
@@ -1337,7 +1340,7 @@ async function loadAllocations() {
   }
 }
 
-// ===== FIXED: Render Allocations Table with better handling for Unknown =====
+// ===== FIXED: Render Allocations Table - NO "Unknown" =====
 function renderAllocationsTable(data) {
   const tbody = document.getElementById("allocationsTableBody");
   if (!data || data.length === 0) {
@@ -1347,24 +1350,53 @@ function renderAllocationsTable(data) {
 
   const isAdmin = currentUser && currentUser.role === "admin";
 
+  // Try to get employee names from the employees array if needed
+  const employeeMap = {};
+  employees.forEach(emp => {
+    employeeMap[emp._id] = emp.name || emp.employeeId || "Unknown";
+  });
+
   tbody.innerHTML = data.map((alloc) => {
-    // Get employee name with proper fallback
-    let employeeName = "Unknown";
+    // Get employee name - try multiple sources
+    let employeeName = "Unknown Employee";
+    let employeeId = "";
+    
     if (alloc.employee) {
       if (typeof alloc.employee === 'object') {
         employeeName = alloc.employee.name || alloc.employee.employeeId || "Unknown Employee";
+        employeeId = alloc.employee.employeeId || "";
+        // If name is still missing, try to get from employeeMap
+        if (employeeName === "Unknown Employee" && alloc.employee._id && employeeMap[alloc.employee._id]) {
+          employeeName = employeeMap[alloc.employee._id];
+        }
       } else if (typeof alloc.employee === 'string') {
-        employeeName = alloc.employee;
+        // If employee is just an ID string, look it up
+        if (employeeMap[alloc.employee]) {
+          employeeName = employeeMap[alloc.employee];
+        } else {
+          employeeName = alloc.employee;
+        }
       }
     }
     
-    // Get asset name with proper fallback
+    // Get asset name
     let assetName = "Unknown Asset";
     if (alloc.asset) {
       if (typeof alloc.asset === 'object') {
         assetName = alloc.asset.assetName || alloc.asset.assetCode || "Unknown Asset";
       } else if (typeof alloc.asset === 'string') {
         assetName = alloc.asset;
+      }
+    }
+
+    // If employee name is still "Unknown Employee" or "Unknown", try to find by employeeId in the allocation
+    if (employeeName === "Unknown Employee" || employeeName === "Unknown") {
+      // Check if there's an employeeId field directly on allocation
+      if (alloc.employeeId) {
+        const found = employees.find(e => e.employeeId === alloc.employeeId || e._id === alloc.employeeId);
+        if (found) {
+          employeeName = found.name || found.employeeId || "Unknown Employee";
+        }
       }
     }
 
@@ -1948,9 +1980,9 @@ function loadReports() {
 let currentReportData = null;
 let currentReportTitle = "";
 
+// ===== FIXED: generateReport with proper preview for Allocation History =====
 async function generateReport(type) {
   const preview = document.getElementById("reportPreview");
-  const container = document.getElementById("reportDataContainer");
   
   if (!preview) {
     const reportsContainer = document.querySelector(".reports-container");
@@ -2029,22 +2061,53 @@ async function generateReport(type) {
         throw new Error("Unknown report type");
     }
 
-    console.log("Report data:", data);
+    console.log("Report data received:", data);
 
-    // ===== FIX: Handle null references in allocation data =====
+    // ===== FIX: Handle different data structures =====
     let reportData = [];
-    let errorRecords = [];
+    
+    // Check if data is an array directly
+    if (Array.isArray(data)) {
+      reportData = data;
+    } 
+    // Check if data has a data property that is an array
+    else if (data && data.data && Array.isArray(data.data)) {
+      reportData = data.data;
+    }
+    // Check if data has a result property that is an array
+    else if (data && data.result && Array.isArray(data.result)) {
+      reportData = data.result;
+    }
+    // If data is an object with records
+    else if (data && data.records && Array.isArray(data.records)) {
+      reportData = data.records;
+    }
+    // Try to extract any array from the data
+    else if (data && typeof data === 'object') {
+      for (const key in data) {
+        if (Array.isArray(data[key]) && data[key].length > 0) {
+          reportData = data[key];
+          break;
+        }
+      }
+    }
 
-    if (data && data.data && Array.isArray(data.data)) {
-      reportData = data.data.map(item => {
-        // Create a safe copy with null checks
+    console.log("Extracted report data:", reportData);
+    console.log("Report data length:", reportData.length);
+
+    // ===== Process the data to handle null/undefined values =====
+    let processedData = [];
+    let skippedCount = 0;
+
+    if (reportData.length > 0) {
+      processedData = reportData.map(item => {
         const safeItem = {};
         Object.keys(item).forEach(key => {
           const value = item[key];
           if (value === null || value === undefined) {
             safeItem[key] = 'N/A';
           } else if (typeof value === 'object' && value !== null) {
-            // For nested objects like employee or asset, extract name or ID
+            // For nested objects like employee or asset, extract the name
             if (value.name) {
               safeItem[key] = value.name;
             } else if (value.assetName) {
@@ -2067,45 +2130,25 @@ async function generateReport(type) {
         return safeItem;
       });
 
-      // Filter out completely empty records
-      reportData = reportData.filter(item => 
+      // Filter out records that are completely empty
+      processedData = processedData.filter(item => 
         Object.values(item).some(v => v !== 'N/A' && v !== '' && v !== null && v !== undefined)
       );
-
-    } else if (data && Array.isArray(data)) {
-      // If data itself is an array
-      reportData = data.map(item => {
-        const safeItem = {};
-        Object.keys(item).forEach(key => {
-          const value = item[key];
-          if (value === null || value === undefined) {
-            safeItem[key] = 'N/A';
-          } else if (typeof value === 'object' && value !== null) {
-            if (value.name) safeItem[key] = value.name;
-            else if (value.assetName) safeItem[key] = value.assetName;
-            else if (value.employeeId) safeItem[key] = value.employeeId;
-            else if (value.assetCode) safeItem[key] = value.assetCode;
-            else safeItem[key] = JSON.stringify(value);
-          } else {
-            safeItem[key] = value;
-          }
-        });
-        return safeItem;
-      });
-    } else {
-      reportData = [];
+      
+      skippedCount = reportData.length - processedData.length;
     }
 
-    console.log("Processed report data:", reportData);
-    console.log("Error records skipped:", errorRecords.length);
+    console.log("Processed data length:", processedData.length);
+    console.log("Skipped records:", skippedCount);
 
-    if (reportData.length > 0) {
-      currentReportData = reportData;
+    if (processedData.length > 0) {
+      currentReportData = processedData;
       currentReportTitle = title;
       titleEl.textContent = title;
 
-      const columns = Object.keys(reportData[0]);
+      const columns = Object.keys(processedData[0]);
       
+      // Build the table HTML
       let tableHTML = `
         <div style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 8px;">
           <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
@@ -2115,7 +2158,7 @@ async function generateReport(type) {
               </tr>
             </thead>
             <tbody>
-              ${reportData.map(row => `
+              ${processedData.map(row => `
                 <tr style="border-bottom: 1px solid var(--border-color);">
                   ${columns.map(col => {
                     let value = row[col];
@@ -2140,28 +2183,29 @@ async function generateReport(type) {
             </tbody>
           </table>
           <div style="padding: 12px 15px; background: var(--bg-secondary); color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-            <span><strong>Total Records:</strong> ${reportData.length}</span>
-            ${errorRecords.length > 0 ? `<span style="color: #f59e0b;"><strong>⚠️ Skipped:</strong> ${errorRecords.length} records with missing data</span>` : ''}
-            <span><strong>Generated:</strong> ${new Date(data.generatedDate || Date.now()).toLocaleString()}</span>
+            <span><strong>Total Records:</strong> ${processedData.length}</span>
+            ${skippedCount > 0 ? `<span style="color: #f59e0b;"><strong>⚠️ Skipped:</strong> ${skippedCount} records with missing data</span>` : ''}
+            <span><strong>Generated:</strong> ${new Date().toLocaleString()}</span>
           </div>
         </div>
       `;
 
       containerEl.innerHTML = tableHTML;
-      showToast(`✅ ${title} generated successfully! Found ${reportData.length} records.`, "success");
+      showToast(`✅ ${title} generated successfully! Found ${processedData.length} records.`, "success");
     } else {
+      // No data available
       containerEl.innerHTML = `
         <div style="text-align: center; padding: 60px 20px; background: var(--bg-secondary); border-radius: 8px;">
           <i class="fas fa-inbox" style="font-size: 48px; color: var(--text-muted); opacity: 0.5;"></i>
           <h3 style="color: var(--text-muted); margin-top: 20px;">No Data Available</h3>
-          <p style="color: var(--text-muted);">${data?.message || 'No records found for this report'}</p>
+          <p style="color: var(--text-muted);">No records found for this report</p>
           <p style="color: var(--text-muted); font-size: 14px; margin-top: 10px;">
             ${type === 'inventory' ? 'Add some assets first.' : 
               type === 'employee' ? 'Add some employees first.' :
               type === 'allocation' ? 'Create some asset allocations first.' :
               'Create some maintenance requests first.'}
           </p>
-          ${errorRecords.length > 0 ? `<p style="color: #f59e0b; margin-top: 10px;">⚠️ ${errorRecords.length} records were skipped due to missing data.</p>` : ''}
+          ${skippedCount > 0 ? `<p style="color: #f59e0b; margin-top: 10px;">⚠️ ${skippedCount} records were skipped due to missing data.</p>` : ''}
         </div>
       `;
       currentReportData = null;
