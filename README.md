@@ -1,6 +1,6 @@
 # 🚀 IT Asset Management System
 
-A full-stack IT Asset Management System that helps organizations manage IT assets, employee allocations, maintenance requests, and asset tracking through a centralized web platform.
+A Full-Stack IT Asset Management System that helps organizations manage IT assets, employee allocations, maintenance requests, and asset tracking through a centralized web platform.
 
 The system provides secure authentication, asset lifecycle management, employee records management, and reporting capabilities while using MongoDB Atlas for cloud database storage and Render for backend deployment.
 
