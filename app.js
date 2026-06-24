@@ -595,20 +595,33 @@ function renderPieChart(available, allocated, maintenance, retired) {
   const ctx = canvas.getContext('2d');
   const total = available + allocated + maintenance + retired;
 
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const width = Math.min(rect.width || 300, 300);
+  // Get the parent container width for proper sizing
+  const container = canvas.parentElement;
+  const containerWidth = container.clientWidth || 300;
+  const width = Math.min(containerWidth, 300);
   const height = 280;
   
-  canvas.width = width;
-  canvas.height = height;
+  // Set canvas size with proper device pixel ratio for crisp rendering
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.scale(dpr, dpr);
+
+  const centerX = width / 2;
+  const centerY = height / 2 - 10;
+  const radius = Math.min(width, height) / 2 - 45;
+
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
 
   if (total === 0) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font = '16px Inter, sans-serif';
     ctx.fillStyle = '#94a3b8';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('No data available', centerX, centerY);
     
     const legendContainer = document.querySelector('.pie-legend');
     if (legendContainer) {
@@ -624,12 +637,7 @@ function renderPieChart(available, allocated, maintenance, retired) {
     { label: 'Retired', value: retired, color: '#94a3b8', className: 'retired' }
   ].filter(item => item.value > 0);
 
-  const centerX = canvas.width / 2;
-  const centerY = canvas.height / 2 - 10;
-  const radius = Math.min(canvas.width, canvas.height) / 2 - 40;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+  // Draw pie slices
   let startAngle = -Math.PI / 2;
   data.forEach((item) => {
     const sliceAngle = (item.value / total) * 2 * Math.PI;
@@ -642,6 +650,7 @@ function renderPieChart(available, allocated, maintenance, retired) {
     ctx.fillStyle = item.color;
     ctx.fill();
     
+    // Add border between slices
     ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#ffffff';
     ctx.lineWidth = 2;
     ctx.stroke();
@@ -649,24 +658,30 @@ function renderPieChart(available, allocated, maintenance, retired) {
     startAngle += sliceAngle;
   });
 
+  // Draw center circle (donut hole)
   ctx.beginPath();
-  ctx.arc(centerX, centerY, radius * 0.5, 0, 2 * Math.PI);
+  ctx.arc(centerX, centerY, radius * 0.48, 0, 2 * Math.PI);
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-card').trim() || '#ffffff';
   ctx.fill();
   ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() || '#e2e8f0';
-  ctx.lineWidth = 1;
+  ctx.lineWidth = 1.5;
   ctx.stroke();
 
-  ctx.font = 'bold 20px Inter, sans-serif';
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#0f172a';
+  // Draw TOTAL number in center - FIXED
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(total, centerX, centerY - 6);
   
-  ctx.font = '12px Inter, sans-serif';
+  // Total number
+  ctx.font = 'bold 22px Inter, sans-serif';
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#0f172a';
+  ctx.fillText(total, centerX, centerY - 4);
+  
+  // "Total Assets" label
+  ctx.font = '11px Inter, sans-serif';
   ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#94a3b8';
-  ctx.fillText('Total Assets', centerX, centerY + 18);
+  ctx.fillText('Total Assets', centerX, centerY + 20);
 
+  // Draw legend
   const legendContainer = document.querySelector('.pie-legend');
   if (legendContainer) {
     legendContainer.innerHTML = data.map(item => `
@@ -3859,4 +3874,120 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   testConnection();
+});
+
+// ===== LIVE TIME WIDGET =====
+function updateLiveTime() {
+  const now = new Date();
+  
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+  const timeString = `${hours}:${minutes}:${seconds}`;
+  
+  const dateOptions = {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  };
+  const dateString = now.toLocaleDateString('en-US', dateOptions);
+  
+  const timeDisplay = document.getElementById('timeDisplay');
+  const dateDisplay = document.getElementById('dateDisplay');
+  
+  if (timeDisplay) timeDisplay.textContent = timeString;
+  if (dateDisplay) dateDisplay.textContent = dateString;
+}
+
+let timeInterval = null;
+
+function startLiveTime() {
+  updateLiveTime();
+  if (timeInterval) clearInterval(timeInterval);
+  timeInterval = setInterval(updateLiveTime, 1000);
+}
+
+function stopLiveTime() {
+  if (timeInterval) {
+    clearInterval(timeInterval);
+    timeInterval = null;
+  }
+}
+
+// Override initializeApp to start live time
+const origInitApp = window.initializeApp;
+window.initializeApp = function() {
+  origInitApp();
+  startLiveTime();
+};
+
+// Override handleLogout to stop live time
+const origHandleLogout = window.handleLogout;
+window.handleLogout = function() {
+  stopLiveTime();
+  origHandleLogout();
+};
+
+// ===== MOVING CARDS / NEWS TICKER =====
+function populateMovingCards() {
+  const track = document.getElementById('movingCardsTrack');
+  if (!track) return;
+
+  // Get data from the dashboard
+  const totalAssets = parseInt(document.getElementById('kpiTotalAssets')?.textContent || '0');
+  const available = parseInt(document.getElementById('kpiAvailableAssets')?.textContent || '0');
+  const allocated = parseInt(document.getElementById('kpiAllocatedAssets')?.textContent || '0');
+  const maintenance = parseInt(document.getElementById('kpiMaintenanceAssets')?.textContent || '0');
+  const employees = parseInt(document.getElementById('kpiTotalEmployees')?.textContent || '0');
+
+  const cards = [
+    { label: 'Total Assets', value: totalAssets, icon: 'fa-server', color: 'blue', change: '+12%', trend: 'up' },
+    { label: 'Available', value: available, icon: 'fa-check-circle', color: 'green', change: '+8%', trend: 'up' },
+    { label: 'Allocated', value: allocated, icon: 'fa-user-check', color: 'orange', change: '-3%', trend: 'down' },
+    { label: 'Maintenance', value: maintenance, icon: 'fa-wrench', color: 'red', change: '+5%', trend: 'up' },
+    { label: 'Employees', value: employees, icon: 'fa-users', color: 'purple', change: '0%', trend: 'neutral' },
+  ];
+
+  // Create card HTML
+  let cardHTML = '';
+  
+  // Duplicate cards for seamless scrolling
+  for (let repeat = 0; repeat < 2; repeat++) {
+    cards.forEach(card => {
+      cardHTML += `
+        <div class="moving-card">
+          <div class="card-icon ${card.color}">
+            <i class="fas ${card.icon}"></i>
+          </div>
+          <span class="card-label">${card.label}</span>
+          <span class="card-value">${card.value}</span>
+          <span class="card-change ${card.trend}">
+            ${card.trend === 'up' ? '<i class="fas fa-arrow-up"></i>' : ''}
+            ${card.trend === 'down' ? '<i class="fas fa-arrow-down"></i>' : ''}
+            ${card.trend === 'neutral' ? '<i class="fas fa-minus"></i>' : ''}
+            ${card.change}
+          </span>
+        </div>
+      `;
+    });
+  }
+
+  track.innerHTML = cardHTML;
+}
+
+// Override the loadDashboard function to populate moving cards
+const originalLoadDashboard = window.loadDashboard;
+window.loadDashboard = async function() {
+  // Call the original function
+  await originalLoadDashboard();
+  
+  // Populate moving cards after dashboard loads
+  setTimeout(populateMovingCards, 500);
+};
+
+// Also populate on initial load
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait for dashboard to load
+  setTimeout(populateMovingCards, 1000);
 });
