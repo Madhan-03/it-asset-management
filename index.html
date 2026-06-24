@@ -22,6 +22,24 @@
     <!-- Login Page -->
     <div id="loginPage" class="page active">
       <div class="login-container">
+        <!-- Corner Accents -->
+        <div class="corner-accent-1"></div>
+        <div class="corner-accent-2"></div>
+        <div class="corner-accent-3"></div>
+        <div class="corner-accent-4"></div>
+        
+        <!-- Floating Particles -->
+        <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+        </div>
+        
         <div class="login-wrapper">
           <!-- Left Side - Branding -->
           <div class="login-brand">
@@ -34,11 +52,11 @@
               <div class="brand-features">
                 <div class="feature-item">
                   <i class="fas fa-check-circle"></i>
-                  <span>Track assets in real-time</span>
+                  <span>Real-time tracking</span>
                 </div>
                 <div class="feature-item">
                   <i class="fas fa-check-circle"></i>
-                  <span>Manage employee allocations</span>
+                  <span>Employee allocations</span>
                 </div>
                 <div class="feature-item">
                   <i class="fas fa-check-circle"></i>
@@ -89,7 +107,6 @@
                   class="error-message"
                   style="display: none"
                 ></div>
-                <!-- Centered Button -->
                 <div class="btn-wrapper">
                   <button type="submit" class="btn-primary btn-full">
                     <i class="fas fa-sign-in-alt"></i> Sign In
@@ -191,7 +208,6 @@
                   class="success-message"
                   style="display: none"
                 ></div>
-                <!-- Centered Button -->
                 <div class="btn-wrapper">
                   <button type="submit" class="btn-primary btn-full">
                     <i class="fas fa-user-plus"></i> Create Account
@@ -264,7 +280,6 @@
             <i class="fas fa-file-alt"></i>
             <span>Reports</span>
           </li>
-          <!-- Profile Section -->
           <li class="nav-divider"></li>
           <li class="nav-item profile-item" data-page="profile">
             <i class="fas fa-user-circle"></i>
@@ -317,7 +332,6 @@
                 </div>
               </div>
             </div>
-            <!-- Theme Toggle - Sun/Moon Icon -->
             <button
               id="themeToggleBtn"
               class="theme-toggle-btn"
@@ -325,7 +339,6 @@
             >
               <i class="fas fa-moon"></i>
             </button>
-            <!-- Header Logout Button - appears next to theme toggle -->
             <button
               id="headerLogoutBtn"
               class="header-logout-btn"
@@ -334,7 +347,11 @@
             >
               <i class="fas fa-sign-out-alt"></i>
             </button>
-            <div class="header-date" id="currentDate"></div>
+            <!-- Live Time Widget -->
+            <div class="time-widget" id="timeWidget">
+              <span class="time-display" id="timeDisplay">00:00:00</span>
+              <span class="date-display" id="dateDisplay">Loading...</span>
+            </div>
           </div>
         </header>
 
@@ -342,66 +359,68 @@
         <div class="page-content">
           <!-- Dashboard -->
           <div id="dashboardPage" class="content-page active">
-            <!-- KPI Tiles -->
-            <div class="kpi-grid">
-              <div class="kpi-card">
-                <div class="kpi-icon blue">
-                  <i class="fas fa-server"></i>
+            <!-- KPI Tiles with Moving Animation -->
+            <div class="kpi-grid-wrapper">
+              <div class="kpi-grid" id="kpiGrid">
+                <div class="kpi-card">
+                  <div class="kpi-icon blue">
+                    <i class="fas fa-server"></i>
+                  </div>
+                  <div class="kpi-info">
+                    <h3 id="kpiTotalAssets">0</h3>
+                    <p>Total Assets</p>
+                  </div>
+                  <div class="kpi-trend up">
+                    <i class="fas fa-arrow-up"></i> 12%
+                  </div>
                 </div>
-                <div class="kpi-info">
-                  <h3 id="kpiTotalAssets">0</h3>
-                  <p>Total Assets</p>
+                <div class="kpi-card">
+                  <div class="kpi-icon green">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                  <div class="kpi-info">
+                    <h3 id="kpiAvailableAssets">0</h3>
+                    <p>Available</p>
+                  </div>
+                  <div class="kpi-trend up">
+                    <i class="fas fa-arrow-up"></i> 8%
+                  </div>
                 </div>
-                <div class="kpi-trend up">
-                  <i class="fas fa-arrow-up"></i> 12%
+                <div class="kpi-card">
+                  <div class="kpi-icon orange">
+                    <i class="fas fa-user-check"></i>
+                  </div>
+                  <div class="kpi-info">
+                    <h3 id="kpiAllocatedAssets">0</h3>
+                    <p>Allocated</p>
+                  </div>
+                  <div class="kpi-trend down">
+                    <i class="fas fa-arrow-down"></i> 3%
+                  </div>
                 </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon green">
-                  <i class="fas fa-check-circle"></i>
+                <div class="kpi-card">
+                  <div class="kpi-icon red">
+                    <i class="fas fa-wrench"></i>
+                  </div>
+                  <div class="kpi-info">
+                    <h3 id="kpiMaintenanceAssets">0</h3>
+                    <p>Under Maintenance</p>
+                  </div>
+                  <div class="kpi-trend up">
+                    <i class="fas fa-arrow-up"></i> 5%
+                  </div>
                 </div>
-                <div class="kpi-info">
-                  <h3 id="kpiAvailableAssets">0</h3>
-                  <p>Available</p>
-                </div>
-                <div class="kpi-trend up">
-                  <i class="fas fa-arrow-up"></i> 8%
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon orange">
-                  <i class="fas fa-user-check"></i>
-                </div>
-                <div class="kpi-info">
-                  <h3 id="kpiAllocatedAssets">0</h3>
-                  <p>Allocated</p>
-                </div>
-                <div class="kpi-trend down">
-                  <i class="fas fa-arrow-down"></i> 3%
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon red">
-                  <i class="fas fa-wrench"></i>
-                </div>
-                <div class="kpi-info">
-                  <h3 id="kpiMaintenanceAssets">0</h3>
-                  <p>Under Maintenance</p>
-                </div>
-                <div class="kpi-trend up">
-                  <i class="fas fa-arrow-up"></i> 5%
-                </div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-icon purple">
-                  <i class="fas fa-users"></i>
-                </div>
-                <div class="kpi-info">
-                  <h3 id="kpiTotalEmployees">0</h3>
-                  <p>Total Employees</p>
-                </div>
-                <div class="kpi-trend neutral">
-                  <i class="fas fa-minus"></i> 0%
+                <div class="kpi-card">
+                  <div class="kpi-icon purple">
+                    <i class="fas fa-users"></i>
+                  </div>
+                  <div class="kpi-info">
+                    <h3 id="kpiTotalEmployees">0</h3>
+                    <p>Total Employees</p>
+                  </div>
+                  <div class="kpi-trend neutral">
+                    <i class="fas fa-minus"></i> 0%
+                  </div>
                 </div>
               </div>
             </div>
