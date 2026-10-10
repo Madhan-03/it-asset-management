@@ -82,12 +82,11 @@ Managing IT assets manually often leads to inaccurate records, inefficient track
 
 * HTML5
 * CSS3
-* JavaScript (Vanilla JS)
+* JavaScript
 
 ### Backend
 
 * Node.js
-* Express.js
 
 ### Database
 
@@ -108,7 +107,6 @@ Managing IT assets manually often leads to inaccurate records, inefficient track
 * jsPDF
 * dotenv
 * CORS
-* Express Validator
 
 ---
 
